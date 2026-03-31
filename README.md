@@ -69,4 +69,3 @@ Manages:
 ### Goal of the Program:
 This file provides an interactive interface that groups or families can use to manage the game session for AXIOM-7 collaboratively. It requires players to follow prompts and client-side computation to maintain player states, score transitions, and interactions with the physical board elements.
 
-For deeper functionality or questions, feel free to specify!
