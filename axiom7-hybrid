@@ -8,17 +8,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#0e0a04; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding-top:6px; }
-canvas { display:block; }
+body { background:#0e0a04; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding-top:6px; font-family:'Courier Prime',sans-serif; }
+canvas { display:block; image-rendering:crisp-edges; }
 .mct-input {
-  position:absolute; background:rgba(12,8,2,0.93);
-  border:1px solid rgba(186,133,42,0.42); border-radius:3px;
-  color:#d4a84b; font-family:'Courier Prime',monospace; font-size:11px;
-  outline:none; padding:4px 8px; pointer-events:auto; z-index:10;
-  letter-spacing:0.03em; transition:border-color 0.18s,box-shadow 0.18s;
+  position:absolute; background:rgba(12,8,2,0.96);
+  border:2px solid rgba(186,133,42,0.55); border-radius:4px;
+  color:#e8b95f; font-family:'Courier Prime',monospace; font-size:12px;
+  font-weight:500; outline:none; padding:6px 12px; pointer-events:auto; z-index:10;
+  letter-spacing:0.04em; transition:all 0.22s cubic-bezier(0.2,0.8,0.3,1);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,0.4);
 }
-.mct-input:focus { border-color:rgba(186,133,42,0.85); box-shadow:0 0 10px rgba(186,133,42,0.2); }
-.mct-input::placeholder { color:rgba(140,100,30,0.45); }
+.mct-input:focus { 
+  border-color:rgba(186,133,42,0.95); 
+  box-shadow:inset 0 2px 4px rgba(0,0,0,0.4), 0 0 12px rgba(186,133,42,0.35);
+  background:rgba(14,10,4,0.98);
+}
+.mct-input::placeholder { color:rgba(140,100,30,0.55); }
 </style>
 </head>
 <body>
@@ -68,26 +73,26 @@ const TIMER_F=[5400,4500,3600,2700];
 
 // ── 20 ADVENTURE LOCATIONS ───────────────────────────────────────────
 const SQ=[
-  {id:0, t:'start',  code:'--',  ic:'🌍',label:'Earth HQ',             sub:'Departure point'},
-  {id:1, t:'trivia', code:'T-01',ic:'🤖',label:'NOVA Station',          sub:'AI trivia'},
-  {id:2, t:'create', code:'C-01',ic:'🎨',label:"Cartographers' Map",    sub:'Creative challenge'},
-  {id:3, t:'puzzle', code:'P-01',ic:'⚙️', label:"CHIP's Logic Bay",     sub:'Logic puzzle'},
-  {id:4, t:'explain',code:'E-01',ic:'📢',label:'Crew Briefing Room',    sub:'Explain it!'},
-  {id:5, t:'family', code:'F-01',ic:'🌀',label:'The Rift Zone',         sub:'Family moment'},
-  {id:6, t:'trivia', code:'T-02',ic:'🔬',label:'Titan Research Lab',    sub:'AI trivia'},
-  {id:7, t:'code',   code:'K-01',ic:'💻',label:'The Hyperdrive Core',   sub:'Coding challenge'},
-  {id:8, t:'create', code:'C-02',ic:'🎨',label:'The Gallery Nebula',    sub:'Creative challenge'},
-  {id:9, t:'perform',code:'R-01',ic:'🎭',label:'Robot Theatre',         sub:'Perform!'},
-  {id:10,t:'puzzle', code:'P-02',ic:'☄️', label:'Asteroid Belt',         sub:'Logic puzzle'},
-  {id:11,t:'trivia', code:'T-03',ic:'🌌',label:'Deep Observatory',      sub:'AI trivia'},
-  {id:12,t:'family', code:'F-02',ic:'☀️', label:'Solar Flare Station',   sub:'Family moment'},
-  {id:13,t:'code',   code:'K-02',ic:'💻',label:"LYRA's Code Vault",     sub:'Coding challenge'},
-  {id:14,t:'create', code:'C-03',ic:'🎨',label:'Exoplanet Survey',      sub:'Creative challenge'},
-  {id:15,t:'trivia', code:'T-04',ic:'🧑‍🚀',label:'The Command Bridge',    sub:'AI trivia'},
-  {id:16,t:'puzzle', code:'P-03',ic:'🛸',label:'Space Station Iris',    sub:'Logic puzzle'},
-  {id:17,t:'create', code:'C-04',ic:'🌠',label:'The Void Canvas',       sub:'Creative challenge'},
-  {id:18,t:'explain',code:'E-02',ic:'📡',label:'Final Mission Debrief', sub:'Explain it!'},
-  {id:19,t:'finish', code:'--',  ic:'🏁',label:'Nebula of Knowledge',   sub:'Mission complete!'},
+  {id:0, t:'start',  code:'--',  ic:'🌍',label:'Earth HQ',             sub:'Departure point',teamwork:false},
+  {id:1, t:'trivia', code:'T-01',ic:'🤖',label:'NOVA Station',          sub:'AI trivia',teamwork:true},
+  {id:2, t:'create', code:'C-01',ic:'🎨',label:"Cartographers' Map",    sub:'Creative challenge',teamwork:false},
+  {id:3, t:'puzzle', code:'P-01',ic:'⚙️', label:"CHIP's Logic Bay",     sub:'Logic puzzle',teamwork:false},
+  {id:4, t:'explain',code:'E-01',ic:'📢',label:'Crew Briefing Room',    sub:'Explain it!',teamwork:false},
+  {id:5, t:'family', code:'F-01',ic:'🌀',label:'The Rift Zone',         sub:'Family moment',teamwork:true},
+  {id:6, t:'trivia', code:'T-02',ic:'🔬',label:'Titan Research Lab',    sub:'AI trivia',teamwork:false},
+  {id:7, t:'code',   code:'K-01',ic:'💻',label:'The Hyperdrive Core',   sub:'Coding challenge',teamwork:true},
+  {id:8, t:'create', code:'C-02',ic:'🎨',label:'The Gallery Nebula',    sub:'Creative challenge',teamwork:false},
+  {id:9, t:'perform',code:'R-01',ic:'🎭',label:'Robot Theatre',         sub:'Perform!',teamwork:true},
+  {id:10,t:'puzzle', code:'P-02',ic:'☄️', label:'Asteroid Belt',         sub:'Logic puzzle',teamwork:false},
+  {id:11,t:'trivia', code:'T-03',ic:'🌌',label:'Deep Observatory',      sub:'AI trivia',teamwork:false},
+  {id:12,t:'family', code:'F-02',ic:'☀️', label:'Solar Flare Station',   sub:'Family moment',teamwork:true},
+  {id:13,t:'code',   code:'K-02',ic:'💻',label:"LYRA's Code Vault",     sub:'Coding challenge',teamwork:false},
+  {id:14,t:'create', code:'C-03',ic:'🎨',label:'Exoplanet Survey',      sub:'Creative challenge',teamwork:true},
+  {id:15,t:'trivia', code:'T-04',ic:'🧑‍🚀',label:'The Command Bridge',    sub:'AI trivia',teamwork:false},
+  {id:16,t:'puzzle', code:'P-03',ic:'🛸',label:'Space Station Iris',    sub:'Logic puzzle',teamwork:false},
+  {id:17,t:'create', code:'C-04',ic:'🌠',label:'The Void Canvas',       sub:'Creative challenge',teamwork:true},
+  {id:18,t:'explain',code:'E-02',ic:'📡',label:'Final Mission Debrief', sub:'Explain it!',teamwork:false},
+  {id:19,t:'finish', code:'--',  ic:'🏁',label:'Nebula of Knowledge',   sub:'Mission complete!',teamwork:false},
 ];
 
 // Square themes
@@ -263,7 +268,7 @@ let gs={
   timer:0, timerMax:0, timerActive:false,
   winner:null, hasSave:false,
   anim:0, rolling:false, rollFrame:0,
-  scoreAnim:null, missionLog:[],
+  scoreAnim:null, missionLog:[], locationsVisited:[],
 };
 
 let nameInputs=[], hexGrid=[];
@@ -301,11 +306,20 @@ function doRoll(){
   gs.levelPreviews=null; gs.previewSqId=-1;
   let sq=SQ[newPos], tk=curToken();
   addLog('🎲 '+cur().name+' rolled '+d+' → '+sq.label);
+  
+  let teamworkBonus=0;
+  if(sq.teamwork&&gs.locationsVisited.includes(newPos)){
+    teamworkBonus=2;
+    addLog('🤝 TEAMWORK BONUS! +2 pts — another crew has been here!');
+    gs.scores[gs.currentTurn]+=teamworkBonus;
+  }
+  if(!gs.locationsVisited.includes(newPos))gs.locationsVisited.push(newPos);
+  
   if(newPos===19){gs.winner=gs.currentTurn;gs.screen='winner';}
   else if(sq.t==='start'){nextTurn();}
   else{
     gs.screen='challenge'; gs.selectedLvl=null;
-    gs.challengePhase='picking'; gs.currentQ=null; gs.timerActive=false;
+    gs.challengePhase='picking'; gs.currentQ=null; gs.timerActive=false; gs.timer=0;
   }
   saveGame();
 }
@@ -333,6 +347,7 @@ function resetGame(){
   gs.selectedLvl=null; gs.challengePhase='picking'; gs.currentQ=null;
   gs.timerActive=false; gs.timer=0; gs.winner=null;
   gs.rolling=false; gs.levelPreviews=null; gs.missionLog=[];
+  gs.locationsVisited=[];
   gs.screen='roll'; updateInputVis(); saveGame();
 }
 
@@ -342,7 +357,7 @@ function saveGame(){
   try{localStorage.setItem('axiom7v2',JSON.stringify({
     numPlayers:gs.numPlayers,players:gs.players,positions:gs.positions,
     scores:gs.scores,currentTurn:gs.currentTurn,winner:gs.winner,
-    missionLog:gs.missionLog,
+    missionLog:gs.missionLog,locationsVisited:gs.locationsVisited||[],
   }));}catch(e){}
 }
 function loadSavedGame(){
@@ -351,8 +366,8 @@ function loadSavedGame(){
     if(!d||!d.players)return false;
     Object.assign(gs,{numPlayers:d.numPlayers,players:d.players,
       positions:d.positions,scores:d.scores,currentTurn:d.currentTurn,
-      winner:d.winner,missionLog:d.missionLog||[]});
-    gs.screen=d.winner!==null?'winner':'roll'; return true;
+      winner:d.winner,missionLog:d.missionLog||[],locationsVisited:d.locationsVisited||[]});
+    gs.screen=typeof d.winner==='number'?'winner':'roll'; return true;
   }catch(e){return false;}
 }
 function checkForSave(){
@@ -399,11 +414,14 @@ function box(x,y,w,h,r,bg,bd,bw){
 
 function btn(label,x,y,w,h,bg,tc,sz,bdCol){
   let hov=isOver(x,y,w,h),prs=mouseIsPressed&&hov;
-  let b=prs?bg.map(v=>max(0,v-28)):hov?bg.map(v=>min(255,v+18)):bg;
-  let bd=bdCol||bg.map(v=>min(255,v+40));
-  fill(...b);stroke(...bd,140);strokeWeight(0.8);rect(x,y,w,h,4);
-  noStroke();fill(...tc);textSize(sz||10);textAlign(CENTER,CENTER);
-  textFont(FD);text(label,x+w/2,y+h/2);textFont(FB);
+  let b=prs?bg.map(v=>max(0,v-35)):hov?bg.map(v=>min(255,v+28)):bg;
+  let bd=prs?[255,255,255,195]:bdCol||bg.map(v=>min(255,v+48));
+  let shd=hov?18:prs?6:12;
+  try{drawingContext.shadowBlur=shd;drawingContext.shadowColor=`rgba(${b[0]},${b[1]},${b[2]},${prs?0.6:hov?0.4:0.25})`;}catch(e){}
+  fill(...b);stroke(...bd,prs?180:160);strokeWeight(prs?1.4:1.2);rect(x,y,w,h,6);
+  drawingContext.shadowBlur=0;
+  noStroke();fill(...tc);textSize(sz||11);textAlign(CENTER,CENTER);
+  textFont(FD);textStyle(hov?BOLD:NORMAL);text(label,x+w/2,y+h/2+1);textStyle(NORMAL);textFont(FB);
 }
 
 function lbl(str,x,y,col,sz,al,fnt){
@@ -412,10 +430,11 @@ function lbl(str,x,y,col,sz,al,fnt){
 }
 
 function hdr(title,col){
-  fill(...col,18);noStroke();rect(0,0,W,52);
-  stroke(...col,52);strokeWeight(0.8);line(0,52,W,52);noStroke();
-  glow(col,16);fill(...col,235);textSize(12);textAlign(LEFT,CENTER);
-  textFont(FD);textStyle(BOLD);text(title,20,26);textStyle(NORMAL);clearGlow();
+  fill(...col,22);noStroke();rect(0,0,W,58);
+  fill(...col,8);noStroke();rect(0,0,W,4);
+  stroke(...col,65);strokeWeight(1);line(0,58,W,58);noStroke();
+  glow(col,20);fill(...col,248);textSize(15);textAlign(LEFT,CENTER);
+  textFont(FD);textStyle(BOLD);text(title,24,29);textStyle(NORMAL);clearGlow();
   textFont(FB);
 }
 
@@ -425,55 +444,60 @@ function divider(y,col){
 }
 
 function drawMissionLog(x,y,w,h){
-  fill(8,5,2,162);stroke(186,133,42,35);strokeWeight(0.5);rect(x,y,w,h,4);noStroke();
-  lbl('MISSION LOG',x+8,y+11,[186,133,42,110],7.5,LEFT,FD);
-  gs.missionLog.forEach((msg,i)=>lbl(msg,x+8,y+24+i*14,[186,133,42,80-i*8],8));
+  fill(8,5,2,185);stroke(186,133,42,48);strokeWeight(0.8);rect(x,y,w,h,5);noStroke();
+  fill(186,133,42,35);noStroke();rect(x,y,w,6,5,5,0,0);
+  lbl('📄 MISSION LOG',x+12,y+15,[186,133,42,145],8.5,LEFT,FD);
+  gs.missionLog.forEach((msg,i)=>lbl(msg,x+12,y+32+i*16,[186,133,42,110-i*10],8.5,LEFT,FB));
 }
 
 function drawTurnBar(){
   if(['setup','splash','winner'].includes(gs.screen))return;
   let rl=curRole(),tk=curToken();
-  fill(6,4,1,148);noStroke();rect(0,H-22,W,22);
-  lbl(rl.icon+' '+cur().name+' ('+tk.label+' token)  ·  Square '+curPos()+'  ·  '+gs.scores[gs.currentTurn]+' pts',
-    10,H-11,[186,133,42,140],8.5,LEFT,FD);
-  let kh={roll:'SPACE=roll',challenge:'1-4=level',score:'ENTER=next turn'}[gs.screen]||'';
-  lbl(kh,W-8,H-11,[186,133,42,68],8,RIGHT,FD);
+  fill(6,4,1,185);noStroke();rect(0,H-28,W,28);
+  fill(186,133,42,28);noStroke();rect(0,H-28,W,2);
+  lbl(rl.icon+'  '+cur().name+'  ('+tk.label+')',10,H-14,[186,133,42,200],10,LEFT,FD);
+  lbl('Square '+curPos()+' • '+gs.scores[gs.currentTurn]+' pts',W/2,H-14,[...rl.col,185],9.5,CENTER,FD);
+  let kh={roll:'SPACE or click ROLL',challenge:'1-4 or click CHOOSE',score:'ENTER or click NEXT'}[gs.screen]||'';
+  lbl(kh,W-10,H-14,[186,133,42,115],8.5,RIGHT,FD);
 }
 
 // ── SCREEN: SPLASH ────────────────────────────────────────────────────
 
 function drawSplash(){
-  let p=0.85+0.15*sin(gs.anim*0.04);
-  glow([186,133,42],28*p);
-  fill(186,133,42,238);textSize(50);textAlign(CENTER,CENTER);
-  textFont(FD);textStyle(BOLD);text('AXIOM-7',W/2,H/2-148);
+  let p=0.8+0.2*sin(gs.anim*0.038);
+  glow([186,133,42],32*p);
+  fill(186,133,42,245);textSize(64);textAlign(CENTER,CENTER);
+  textFont(FD);textStyle(BOLD);text('AXIOM-7',W/2,H/2-156);
   textStyle(NORMAL);clearGlow();
   textFont(FB);
-  fill(138,108,58,170);textSize(11);textAlign(CENTER,CENTER);
-  text('MISSION CONTROL TERMINAL  ·  HYBRID TABLE ADVENTURE',W/2,H/2-106);
+  fill(168,128,68,185);textSize(12.5);textAlign(CENTER,CENTER);
+  text('MISSION CONTROL TERMINAL',W/2,H/2-108);
+  fill(128,98,58,140);textSize(10);textAlign(CENTER,CENTER);
+  text('Hybrid Table Adventure • AI Learning Through Play',W/2,H/2-95);
 
   // Instruction bar
-  fill(12,8,2,148);stroke(48,148,148,40);strokeWeight(0.5);
-  rect(W/2-236,H/2-92,472,26,3);noStroke();
-  fill(48,148,148,165);textSize(10);textAlign(CENTER,CENTER);
-  text('Place your printed board on the table · Sit around it · Use this terminal together',W/2,H/2-79);
+  fill(12,8,2,168);stroke(48,148,148,55);strokeWeight(0.8);
+  rect(W/2-256,H/2-88,512,32,4);noStroke();
+  fill(48,148,148,200);textSize(10.5);textAlign(CENTER,CENTER);textStyle(BOLD);
+  text('Place your printed board on the table · Sit around it · Use this terminal together',W/2,H/2-72);
+  textStyle(NORMAL);
 
   divider(H/2-60,[186,133,42,100]);
 
   // Crew roles
-  lbl('CREW ROLES',W/2,H/2-44,[186,133,42,128],8,CENTER,FD);
+  lbl('CREW ROLES',W/2,H/2-42,[186,133,42,145],9.5,CENTER,FD);
   ROLES.forEach((r,i)=>{
     let rx=W/2-214+i*107;
-    fill(...r.col,16);stroke(...r.col,55);strokeWeight(0.5);rect(rx-46,H/2-36,92,22,3);noStroke();
-    lbl(r.icon+' '+r.label,rx,H/2-25,[...r.col,200],9,CENTER,FD);
+    fill(...r.col,20);stroke(...r.col,68);strokeWeight(0.7);rect(rx-48,H/2-32,96,26,4);noStroke();
+    lbl(r.icon+' '+r.label,rx,H/2-19,[...r.col,220],10,CENTER,FD);
   });
 
   if(gs.hasSave){
-    btn('▶  CONTINUE MISSION',W/2-118,H/2+2,236,44,[22,15,3],[186,133,42,240],13,[186,133,42,100]);
-    btn('+ NEW MISSION',W/2-84,H/2+58,168,32,[16,10,3],[48,148,148,200],10,[48,148,148,80]);
-    btn('CLEAR SAVE',W/2-44,H/2+102,88,22,[18,6,4],[194,82,48,160],8,[194,82,48,60]);
+    btn('▶  CONTINUE MISSION',W/2-128,H/2+8,256,50,[24,16,3],[220,200,150,248],14.5,[186,133,42,120]);
+    btn('+ NEW MISSION',W/2-84,H/2+72,168,36,[18,11,3],[88,188,188,220],11,[88,188,188,100]);
+    btn('CLEAR SAVE',W/2-44,H/2+120,88,24,[20,8,5],[194,82,48,185],8.5,[194,82,48,80]);
   }else{
-    btn('▶  BEGIN MISSION',W/2-112,H/2+2,224,48,[22,15,3],[186,133,42,240],14,[186,133,42,100]);
+    btn('▶  BEGIN MISSION',W/2-128,H/2+8,256,50,[24,16,3],[220,200,150,248],14.5,[186,133,42,120]);
   }
 
   fill(12,8,2,118);stroke(186,133,42,20);strokeWeight(0.4);rect(W-122,H-26,116,20,3);noStroke();
@@ -485,16 +509,17 @@ function drawSplash(){
 const R0=118,RH=64;
 
 function drawSetup(){
-  hdr('⚙  MISSION SETUP — Assign Your Crew',[186,133,42]);
+  hdr('⚙  MISSION SETUP — Assemble Your Crew',[186,133,42]);
 
   // Player count
-  fill(10,7,2,152);stroke(186,133,42,38);strokeWeight(0.6);rect(18,58,W-36,44,4);noStroke();
-  lbl('CREW SIZE:',30,80,[186,133,42,140],9,LEFT,FD);
+  fill(10,7,2,172);stroke(186,133,42,48);strokeWeight(0.8);rect(18,66,W-36,54,5);noStroke();
+  fill(186,133,42,32);noStroke();rect(18,66,W-36,6,5,5,0,0);
+  lbl('CREW SIZE: Select 2-6 for maximum adventure!',30,86,[186,133,42,165],10,LEFT,FD);
   [2,3,4,5,6].forEach((n,i)=>{
     let act=gs.numPlayers===n;
-    btn(''+n,110+i*56,64,46,28,
-      act?[22,15,3]:[14,10,3],[186,133,42,act?240:110],13,
-      [186,133,42,act?140:40]);
+    btn(''+n,128+i*62,98,48,32,
+      act?[28,18,4]:[16,11,3],[...act?[240,220,140]:[186,133,42,150]],14,
+      [186,133,42,act?160:60]);
   });
 
   // Player rows
@@ -502,53 +527,56 @@ function drawSetup(){
     let ry=R0+i*RH,p=gs.players[i];
     let tk=TOKENS[p.tokenIdx%TOKENS.length];
     let rl=ROLES[p.roleIdx%ROLES.length];
-    fill(10,7,2,152);stroke(186,133,42,26);strokeWeight(0.55);rect(18,ry,W-36,58,4);noStroke();
+    fill(10,7,2,172);stroke(...tk.col,45);strokeWeight(0.8);rect(18,ry,W-36,66,5);noStroke();
+    fill(...tk.col,22);noStroke();rect(18,ry,W-36,4,5,5,0,0);
+    fill(...tk.col,255);noStroke();rect(18,ry,5,66,5,0,0,5);
 
     // Token swatch
-    fill(...tk.col,195);noStroke();rect(26,ry+6,40,46,3);
-    fill(...tk.col,255);textSize(9.5);textAlign(CENTER,CENTER);
-    text(tk.label,46,ry+24);textSize(7.5);text('token',46,ry+36);
+    fill(...tk.col,220);noStroke();rect(26,ry+8,44,50,4);
+    fill(0,0,0,145);noStroke();rect(26,ry+8,44,50,4);
+    fill(...tk.col,255);textSize(10);textAlign(CENTER,CENTER);
+    text(tk.label,48,ry+26);textSize(8.5);text('token',48,ry+40);
 
     // Role badge
-    fill(...rl.col,18);stroke(...rl.col,55);strokeWeight(0.5);rect(72,ry+6,76,46,3);noStroke();
-    textSize(16);textAlign(CENTER,CENTER);text(rl.icon,110,ry+24);
-    lbl(rl.label,110,ry+40,[...rl.col,200],8,CENTER,FD);
+    fill(...rl.col,25);stroke(...rl.col,65);strokeWeight(0.8);rect(78,ry+8,82,50,4);noStroke();
+    textSize(18);textAlign(CENTER,CENTER);text(rl.icon,119,ry+26);
+    lbl(rl.label,119,ry+46,[...rl.col,220],9,CENTER,FD);
 
     // Token selectors
-    lbl('TOKEN:',156,ry+15,[186,133,42,88],7,LEFT,FD);
+    lbl('TOKEN:',168,ry+17,[186,133,42,110],8,LEFT,FD);
     TOKENS.forEach((tok,ti)=>{
       let act=p.tokenIdx===ti;
       let inUse=gs.players.slice(0,gs.numPlayers).some((pp,pi)=>pi!==i&&pp.tokenIdx===ti);
-      fill(...tok.col,inUse?28:act?205:95);noStroke();
-      circle(170+ti*22,ry+30,act?16:12);
-      if(act){stroke(...tok.col,195);strokeWeight(1.4);noFill();circle(170+ti*22,ry+30,19);noStroke();}
-      if(inUse){stroke(70,50,30,90);strokeWeight(0.7);noFill();circle(170+ti*22,ry+30,14);noStroke();}
+      fill(...tok.col,inUse?48:act?225:125);noStroke();
+      circle(186+ti*24,ry+32,act?17:13);
+      if(act){stroke(...tok.col,220);strokeWeight(1.6);noFill();circle(186+ti*24,ry+32,21);noStroke();}
+      if(inUse){stroke(80,55,35,100);strokeWeight(0.9);noFill();circle(186+ti*24,ry+32,15);noStroke();}
     });
 
     // Role selectors
-    lbl('ROLE:',156,ry+46,[186,133,42,88],7,LEFT,FD);
+    lbl('ROLE:',168,ry+50,[186,133,42,110],8,LEFT,FD);
     ROLES.forEach((r,ri)=>{
       let act=p.roleIdx===ri;
-      fill(...r.col,act?180:58);noStroke();circle(170+ri*28,ry+58,act?14:10);
-      textSize(act?12:9);textAlign(CENTER,CENTER);text(r.icon,170+ri*28,ry+58);
+      fill(...r.col,act?200:85);noStroke();circle(186+ri*28,ry+62,act?15:11);
+      textSize(act?13:10);textAlign(CENTER,CENTER);text(r.icon,186+ri*28,ry+62);
     });
 
-    // Name input area (HTML input overlays)
-    fill(8,5,2,158);stroke(186,133,42,52);strokeWeight(0.6);rect(316,ry+12,194,28,3);noStroke();
+    // Name input area
+    fill(8,5,2,178);stroke(186,133,42,60);strokeWeight(0.8);rect(320,ry+12,192,34,4);noStroke();
 
     // Difficulty selector
     LEVELS.forEach((lev,j)=>{
       let act2=p.defaultLevel===lev.id;
-      btn(lev.sym+' '+lev.label,520+j*72,ry+12,66,28,
-        act2?lev.col.map(v=>v*0.28):lev.col.map(v=>v*0.1),
-        act2?[255,255,255]:lev.col.map(v=>v*0.75+35),
-        7,lev.col.map(v=>v*0.5));
+      btn(lev.sym+' '+lev.label,528+j*76,ry+12,70,34,
+        act2?lev.col.map(v=>v*0.35):lev.col.map(v=>v*0.12),
+        act2?[255,255,255,245]:lev.col.map(v=>v*0.8+55),
+        8.5,lev.col.map(v=>v*0.6));
     });
   }
 
-  let by=R0+gs.numPlayers*RH+12;
-  btn('▶  LAUNCH MISSION',W/2-114,by,228,44,[22,14,2],[186,133,42,240],14,[186,133,42,100]);
-  lbl('Place all tokens on Earth HQ (Square 0) before launching!',W/2,by+58,[186,133,42,80],8.5,CENTER,FD);
+  let by=R0+gs.numPlayers*RH+16;
+  btn('▶  LAUNCH MISSION',W/2-128,by,256,50,[28,17,3],[228,208,158,248],15,[186,133,42,130]);
+  lbl('All tokens start at Earth HQ (Square 0)',W/2,by+68,[186,133,42,110],9,CENTER,FD);
 }
 
 // ── SCREEN: ROLL ──────────────────────────────────────────────────────
@@ -559,48 +587,60 @@ function drawRoll(){
   let cp=cur(),rl=curRole(),tk=curToken();
   hdr(rl.icon+'  '+cp.name+'  ·  '+rl.label+' — Your Turn',rl.col);
 
-  // Scoreboard strip
+  // Scoreboard strip - ENHANCED
   let sw=(W-40)/gs.numPlayers-3;
   gs.players.slice(0,gs.numPlayers).forEach((p,i)=>{
     let px=20+i*(sw+3),act=i===gs.currentTurn;
     let tk2=TOKENS[p.tokenIdx%TOKENS.length],rl2=ROLES[p.roleIdx%ROLES.length];
-    fill(...tk2.col,act?22:10);stroke(...tk2.col,act?80:28);strokeWeight(act?1.1:0.4);
-    rect(px,58,sw,52,4);noStroke();
-    fill(...tk2.col,220);noStroke();rect(px,58,5,52,3,0,0,3);
-    lbl(p.name,px+14,73,act?[186,133,42,220]:[186,133,42,118],9,LEFT,FD);
-    lbl(gs.scores[i]+' pts',px+14,91,act?[...tk2.col,230]:[...tk2.col,110],11);
-    lbl('Sq '+gs.positions[i]+'  '+rl2.icon,px+sw-8,91,[186,133,42,70],8,RIGHT);
+    fill(...tk2.col,act?28:12);stroke(...tk2.col,act?95:35);strokeWeight(act?1.2:0.5);
+    rect(px,70,sw,62,5);noStroke();
+    fill(...tk2.col,235);noStroke();rect(px,70,6,62,5,0,0,5);
+    lbl(p.name,px+16,87,act?[220,200,130,235]:[186,133,42,138],10,LEFT,FD);
+    lbl(gs.scores[i]+' pts',px+16,108,act?[...tk2.col,245]:[...tk2.col,130],12,LEFT,FD);
+    lbl('Sq '+gs.positions[i]+'  '+rl2.icon,px+sw-10,108,[186,133,42,95],9,RIGHT,FD);
   });
 
-  // Role instruction
-  fill(10,7,2,148);stroke(...rl.col,28);strokeWeight(0.4);rect(18,118,W-36,28,4);noStroke();
-  lbl(rl.icon+' '+rl.label+': Roll the physical die, then tap ROLL to move your '+tk.label+' token.',
-    26,132,[...rl.col,170],9,LEFT,FD);
+  // Role instruction - LARGER AND MORE VISIBLE
+  fill(10,7,2,168);stroke(...rl.col,42);strokeWeight(0.7);rect(18,138,W-36,36,5);noStroke();
+  fill(...rl.col,35);noStroke();rect(18,138,W-36,4,5,5,0,0);
+  lbl(rl.icon+' '+rl.label+': Roll the die, then tap ROLL to move your '+tk.label+' token.',
+    28,158,[...rl.col,195],10.5,LEFT,FD);
 
-  divider(152,[186,133,42,80]);
+  divider(180,[186,133,42,90]);
 
-  // Dice
+  // Dice - MORE PROMINENT
   if(gs.rolling){
-    glow([186,133,42],12);
-    fill(14,10,4,218);stroke(186,133,42,75);strokeWeight(1.2);rect(DX-44,DY-44,88,88,8);noStroke();clearGlow();
-    drawDiceFace(DX,DY,floor(gs.anim/3)%6+1,[186,133,42,225]);
+    glow([186,133,42],16);
+    fill(14,10,4,235);stroke(186,133,42,95);strokeWeight(1.4);rect(DX-52,DY-52,104,104,10);noStroke();clearGlow();
+    drawDiceFace(DX,DY,floor(gs.anim/3)%6+1,[186,133,42,245]);
+    fill(186,133,42,90*(sin(gs.anim*0.08)+1));textSize(11);textAlign(CENTER,TOP);textFont(FB);
+    text('Rolling…',DX,DY+62);
   }else if(gs.diceRoll){
     let pg=0.5+0.5*sin(gs.anim*0.06);
-    glow([186,133,42],16*pg);
-    fill(14,10,4,218);stroke(186,133,42,130);strokeWeight(1.5);rect(DX-44,DY-44,88,88,8);noStroke();clearGlow();
-    drawDiceFace(DX,DY,gs.diceRoll,[186,133,42,238]);
+    glow([186,133,42],18*pg);
+    fill(14,10,4,235);stroke(186,133,42,160);strokeWeight(1.6);rect(DX-52,DY-52,104,104,10);noStroke();clearGlow();
+    drawDiceFace(DX,DY,gs.diceRoll,[186,133,42,248]);
     let sq=SQ[min(curPos(),19)],tk2=curToken();
-    lbl('Rolled '+gs.diceRoll+' → Move '+tk2.label+' token to: '+sq.label,
-      DX,DY+62,[186,133,42,175],9.5,CENTER,FD);
-    btn('LOAD CHALLENGE  ▶',DX-102,DY+80,204,36,[22,14,2],[186,133,42,240],12,[186,133,42,100]);
+    fill(10,7,2,185);stroke(186,133,42,45);strokeWeight(0.8);rect(DX-168,DY+62,336,36,5);noStroke();
+    lbl('→  Rolled '+gs.diceRoll+'  →  Move to: '+sq.label,DX,DY+82,[186,133,42,210],11,CENTER,FD);
+    btn('LOAD CHALLENGE  ▶',DX-128,DY+110,256,42,[26,16,3],[228,208,158,248],13,[186,133,42,120]);
   }else{
-    fill(12,8,2,185);stroke(186,133,42,40);strokeWeight(0.8);rect(DX-44,DY-44,88,88,8);noStroke();
-    fill(186,133,42,78);textSize(40);textAlign(CENTER,CENTER);text('?',DX,DY+6);
-    btn('ROLL',DX-60,DY+52,120,42,[22,14,2],[186,133,42,242],17,[186,133,42,120]);
-    lbl('SPACE to roll',DX,DY+104,[186,133,42,65],8,CENTER,FD);
+    fill(12,8,2,215);stroke(186,133,42,55);strokeWeight(1);rect(DX-52,DY-52,104,104,10);noStroke();
+    fill(186,133,42,115);textSize(48);textAlign(CENTER,CENTER);text('?',DX,DY+8);
+    btn('ROLL',DX-76,DY+68,152,52,[26,16,3],[228,208,158,248],18,[186,133,42,140]);
+    lbl('SPACE or click to roll',DX,DY+132,[186,133,42,90],9,CENTER,FD);
   }
 
-  drawMissionLog(18,H-98,290,90);
+  // ── VISITED TEAMWORK ZONES ──
+  let twZones=SQ.filter(s=>s.teamwork);
+  let visited=twZones.filter(s=>gs.locationsVisited.includes(s.id));
+  fill(10,7,2,190);stroke(100,180,120,45);strokeWeight(0.7);rect(W-312,H-78,294,60,4);noStroke();
+  lbl('🤝 TEAMWORK ZONES',W-306,H-70,[100,200,100,210],9.5,LEFT,FD);
+  let twLabels=twZones.map(s=>s.label.substring(0,12)).join('  •  ');
+  lbl(twLabels,W-306,H-58,[100,140,100,155],8,LEFT,FD);
+  lbl(visited.length+'/'+twZones.length+' visited',W-306,H-49,[100,visited.length===twZones.length?220:160,100,185],8,LEFT,FD);
+
+  drawMissionLog(18,H-110,290,102);
   drawTurnBar();
 }
 
@@ -628,16 +668,28 @@ function drawChallengePicking(sq,th){
   let ri=RI[sq.t]||RI.trivia;
   hdr(sq.ic+'  '+sq.label+'  ['+sq.code+']  — Choose Difficulty',[...th.bd]);
 
+  // ── TEAMWORK ZONE STATUS ──
+  let cardStartY=66;
+  if(sq.teamwork){
+    let visited=gs.locationsVisited.includes(sq.id);
+    fill(10,7,2,220);stroke(100,180,120,60);strokeWeight(0.9);rect(18,cardStartY,W-36,28,4);noStroke();
+    lbl('🤝 TEAMWORK ZONE'+(visited?' — BONUS +2 pts EARNED!':' — First visit, next crew gets bonus'),
+      28,cardStartY+16,[100,visited?220:140,100],9.5,LEFT,FD);
+    cardStartY=94;
+  }
+
   // Location card
-  fill(...th.bg,210);stroke(...th.bd,95);strokeWeight(1);rect(18,58,W-36,52,4);noStroke();
-  fill(...th.bd,22);noStroke();rect(18,58,W-36,18,4,4,0,0);
-  lbl(sq.code+'  ·  '+sq.label,28,67,[...th.bd,210],10,LEFT,FD);
-  lbl(sq.sub,28,83,[...th.bd,150],9);
+  fill(...th.bg,225);stroke(...th.bd,110);strokeWeight(1.2);rect(18,cardStartY,W-36,58,5);noStroke();
+  fill(...th.bd,28);noStroke();rect(18,cardStartY,W-36,22,5,5,0,0);
+  fill(...th.bd,255);noStroke();rect(18,cardStartY,4,58,5,0,0,5);
+  lbl(sq.code+'  ·  '+sq.label,30,cardStartY+12,[...th.bd,230],11.5,LEFT,FD);
+  lbl(sq.sub,30,cardStartY+31,[...th.bd,170],10);
 
   // Role strip
-  fill(10,7,2,148);stroke(186,133,42,26);strokeWeight(0.4);rect(18,116,W-36,26,4);noStroke();
-  lbl('📋  '+ri.read+': read card '+sq.code+' aloud  ·  '+ri.judge+': judge  ·  '+ri.award+': award points',
-    26,129,[186,133,42,138],8.5,LEFT,FD);
+  let roleStripY=sq.teamwork?154:130;
+  fill(10,7,2,162);stroke(186,133,42,42);strokeWeight(0.6);rect(18,roleStripY,W-36,30,4);noStroke();
+  lbl('📋  '+ri.read+': read aloud  ·  '+ri.judge+': judge  ·  '+ri.award+': award',
+    26,roleStripY+18,[186,133,42,165],9.5,LEFT,FD);
 
   // Cache previews
   if(gs.previewSqId!==sq.id||!gs.levelPreviews){
@@ -646,10 +698,11 @@ function drawChallengePicking(sq,th){
   }
 
   // 2×2 level card grid
+  let gridStartY=roleStripY+32;
   LEVELS.forEach((l,i)=>{
     let col2=i%2,row=floor(i/2);
     let lx=18+col2*(floor((W-42)/2)+4);
-    let lw=floor((W-42)/2),ly=148+row*256,lh=250;
+    let lw=floor((W-42)/2),ly=gridStartY+row*256,lh=250;
     let prev=gs.levelPreviews[i];
     fill(...l.col.map(v=>v*0.12),218);stroke(...l.col,68);strokeWeight(0.8);rect(lx,ly,lw,lh,5);noStroke();
     fill(...l.col,198);noStroke();rect(lx,ly,4,lh,5,0,0,5);
@@ -664,7 +717,7 @@ function drawChallengePicking(sq,th){
     fill(...th.tc,152);textSize(9.5);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
     text(prev.q,lx+12,ly+36,lw-20,148);textWrap(CHAR);
     // Choose button
-    btn('CHOOSE  ▶',lx+lw-104,ly+lh-28,98,22,[...l.col.map(v=>v*0.38)],[255,255,255,228],9,l.col);
+    btn('CHOOSE  ▶',lx+lw-108,ly+lh-32,102,26,[...l.col.map(v=>v*0.45)],[255,255,255,238],10.5,l.col.map(v=>v*0.7));
   });
 }
 
@@ -674,35 +727,42 @@ function drawChallengeActive(sq,th){
   hdr(sq.ic+'  '+sq.label+'  ['+sq.code+']  ·  '+l.label+' Challenge',[...l.col]);
 
   // Role strip
-  fill(10,7,2,148);stroke(...l.col,26);strokeWeight(0.4);rect(18,58,W-36,26,4);noStroke();
-  lbl('📋  '+ri.read+': read card '+sq.code+'  ·  '+ri.judge+': judge  ·  '+ri.award+': award points',
-    26,71,[...l.col,172],8.5,LEFT,FD);
+  fill(10,7,2,162);stroke(...l.col,45);strokeWeight(0.7);rect(18,64,W-36,32,4);noStroke();
+  fill(...l.col,12);noStroke();rect(18,64,W-36,4,4,4,0,0);
+  lbl('📋  '+ri.read+': Read  ·  '+ri.judge+': Judge  ·  '+ri.award+': Award',
+    26,82,[...l.col,195],10,LEFT,FD);
 
-  // Question card
-  fill(8,6,2,215);stroke(...l.col,82);strokeWeight(1.2);rect(18,90,W-36,198,5);noStroke();
-  fill(...l.col,18);noStroke();rect(18,90,W-36,30,5,5,0,0);
-  glow(l.col,12);
-  lbl(l.sym+'  '+l.label+'  ·  +'+l.pts+' pts if answered!',28,105,[...l.col,218],10,LEFT,FD);
+  // Question card - LARGER AND MORE PROMINENT
+  fill(8,6,2,225);stroke(...l.col,95);strokeWeight(1.4);rect(18,102,W-36,218,6);noStroke();
+  fill(...l.col,25);noStroke();rect(18,102,W-36,38,6,6,0,0);
+  fill(...l.col,255);noStroke();rect(18,102,5,218,6,0,0,6);
+  glow(l.col,14);
+  lbl(l.sym+'  '+l.label+'  Challenge',28,116,[...l.col,225],11.5,LEFT,FD);
+  fill(255,255,255,88);textSize(8.5);textFont(FB);text('('+l.pts+' pts)',W-35,116,RIGHT);
   clearGlow();
-  fill(...th.tc,198);textSize(12);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
-  text(q.q,26,128,W-60,148);textWrap(CHAR);
+  fill(...th.tc,215);textSize(13.5);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
+  text(q.q,28,150,W-66,148);textWrap(CHAR);
 
   // Hint
   if(q.hint&&q.hint.length>0){
-    btn('💡 HINT  (−1 pt)',22,296,148,24,[14,10,4],[180,155,60,192],8.5,[186,133,42,60]);
+    btn('💡 HINT  (−1 pt)',22,328,156,28,[18,13,5],[200,175,80,210],9.5,[186,133,42,85]);
   }
 
-  // Timer
+  // Timer - MORE VISUAL
   let tf=gs.timerMax>0?gs.timer/gs.timerMax:1;
   let ts=ceil(gs.timer/60);
-  let tc=tf>0.4?[48,168,88]:tf>0.2?[190,148,38]:[210,55,38];
-  fill(10,7,2,200);noStroke();rect(18,328,W-36,20,4);
-  if(tf>0){fill(...tc,182);noStroke();rect(18,328,max(4,(W-36)*tf),20,4);}
-  lbl(ts+'s remaining',W/2,338,[215,215,215,185],9,CENTER,FD);
-  if(tf<0.2&&gs.timer%60<30){stroke(...tc,98);strokeWeight(1.2);noFill();rect(18,328,W-36,20,4);noStroke();}
+  let tc=tf>0.4?[68,188,108]:tf>0.2?[210,165,45]:[225,75,55];
+  let tp=100-floor(tf*100);
+  fill(10,7,2,225);stroke(...tc,65);strokeWeight(1.1);rect(18,368,W-36,28,5);noStroke();
+  if(tf>0){fill(...tc,220);noStroke();rect(18,368,max(2,(W-36)*tf),28,5);}
+  fill(0,0,0,188);noStroke();rect(18,368,W-36,28,5);
+  glow(tc,tf<0.2?8:4);
+  lbl(ts+'s  ·  '+tp+'% elapsed',W/2,384,[...tc,245],12,CENTER,FD);
+  clearGlow();
+  if(tf<0.2&&gs.timer%60<30){stroke(...tc,145);strokeWeight(1.4);noFill();rect(18,368,W-36,28,5);noStroke();}
 
-  btn('✓  MARK ANSWERED',W/2-128,360,256,44,l.col.map(v=>v*0.35),[255,255,255,238],13,l.col);
-  btn('✗  Give Up  (0 pts)',W/2-88,414,176,28,[22,10,8],[194,82,48,162],9.5,[194,82,48,62]);
+  btn('✓  MARK ANSWERED',W/2-140,412,280,48,l.col.map(v=>v*0.42),[255,255,255,248],13.5,l.col.map(v=>v*0.75));
+  btn('✗  Give Up',W/2-88,468,176,32,[24,12,8],[194,82,48,180],10.5,[194,82,48,75]);
 }
 
 // ── SCREEN: SCORE ─────────────────────────────────────────────────────
@@ -712,28 +772,29 @@ function drawScore(){
   let q=gs.currentQ||{q:'',a:'',hint:'',card:sq.code};
   hdr('⭐  Award Points  ·  '+sq.label+'  ['+sq.code+']',[...l.col]);
 
-  // Answer card
-  fill(6,8,6,215);stroke(48,158,78,88);strokeWeight(1);rect(18,58,W-36,114,5);noStroke();
-  fill(48,158,78,18);noStroke();rect(18,58,W-36,28,5,5,0,0);
-  glow([48,158,78],8);
-  lbl('✓  CORRECT ANSWER',28,72,[88,198,108,218],10,LEFT,FD);clearGlow();
-  fill(185,200,185,185);textSize(10.5);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
-  text(q.a||'See physical card '+sq.code,26,90,W-56,72);textWrap(CHAR);
+  // Answer card - LARGER AND MORE VISUAL
+  fill(6,9,6,230);stroke(68,178,98,110);strokeWeight(1.4);rect(18,66,W-36,130,6);noStroke();
+  fill(48,158,78,22);noStroke();rect(18,66,W-36,36,6,6,0,0);
+  fill(68,178,98,255);noStroke();rect(18,66,5,130,6,0,0,6);
+  glow([88,198,108],10);
+  lbl('✓  CORRECT ANSWER',28,84,[108,218,128,235],11.5,LEFT,FD);clearGlow();
+  fill(210,230,210,210);textSize(11.5);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
+  text(q.a||'See physical card '+sq.code,28,110,W-62,78);textWrap(CHAR);
 
   // Award
-  lbl('AWARD +'+l.pts+' pts to:',20,188,[186,133,42,152],10,LEFT,FD);
+  lbl('AWARD +'+l.pts+' pts to:',20,212,[186,133,42,175],11.5,LEFT,FD);
   let slots=gs.numPlayers+1,bw=(W-44)/slots-2;
   gs.players.slice(0,gs.numPlayers).forEach((p,i)=>{
     let act=i===gs.currentTurn,tk2=TOKENS[p.tokenIdx%TOKENS.length];
     let bx=20+i*(bw+2);
-    fill(...tk2.col,act?34:16);stroke(...tk2.col,act?98:38);strokeWeight(act?1.1:0.4);
-    rect(bx,196,bw,58,4);noStroke();
-    fill(...tk2.col,200);noStroke();rect(bx+4,198,6,54,3);
-    lbl(p.name,bx+15,214,act?[186,133,42,218]:[186,133,42,130],9,LEFT,FD);
-    lbl(gs.scores[i]+' → '+(gs.scores[i]+l.pts)+' pts',bx+15,234,[...tk2.col,188],9);
-    btn('+'+l.pts,bx+bw-34,208,28,20,l.col.map(v=>v*0.5),[255,255,255,220],9,l.col);
+    fill(...tk2.col,act?38:18);stroke(...tk2.col,act?115:48);strokeWeight(act?1.3:0.6);
+    rect(bx,226,bw,66,5);noStroke();
+    fill(...tk2.col,220);noStroke();rect(bx+4,228,6,62,3);
+    lbl(p.name,bx+15,243,act?[220,200,130,228]:[186,133,42,150],10,LEFT,FD);
+    lbl(gs.scores[i]+' → '+(gs.scores[i]+l.pts),bx+15,266,[...tk2.col,205],11);
+    btn('+'+l.pts,bx+bw-38,243,32,24,l.col.map(v=>v*0.6),[255,255,255,238],11,l.col.map(v=>v*0.8));
   });
-  btn('Nobody\n0 pts',20+gs.numPlayers*(bw+2),196,bw,58,[20,10,10],[194,82,48,148],8,[194,82,48,50]);
+  btn('Nobody\n(0 pts)',20+gs.numPlayers*(bw+2),226,bw,66,[22,12,8],[194,82,48,180],9,[194,82,48,70]);
 
   // Score anim
   if(gs.scoreAnim){
@@ -765,7 +826,7 @@ function drawScore(){
     }
   });
 
-  btn('NEXT TURN  ▶',W/2-96,H-52,192,40,[22,14,2],[186,133,42,238],13,[186,133,42,100]);
+  btn('NEXT TURN  ▶',W/2-112,H-52,224,44,[26,16,3],[228,208,158,248],14.5,[186,133,42,120]);
   drawTurnBar();
 }
 
@@ -814,8 +875,8 @@ function drawWinner(){
     lbl(gs.scores[i]+' pts',W/2+188,ry+19,win?[186,133,42,218]:[186,133,42,105],13,RIGHT,FD);
   });
 
-  btn('▶  NEW MISSION',W/2-100,H-66,200,42,[22,14,2],[186,133,42,238],14,[186,133,42,100]);
-  btn('⚙  CHANGE CREW',W/2-100,H-116,200,32,[14,9,3],[48,148,148,182],10,[48,148,148,70]);
+  btn('▶  NEW MISSION',W/2-120,H-66,240,48,[28,17,3],[228,208,158,248],15,[186,133,42,130]);
+  btn('⚙  CHANGE CREW',W/2-120,H-118,240,40,[16,10,4],[108,188,188,220],11,[108,188,188,95]);
 }
 
 // ── NAME INPUTS ───────────────────────────────────────────────────────
@@ -843,7 +904,8 @@ function updateInputVis(){
     if(!nameInputs[i])continue;
     if(gs.screen==='setup'&&i<gs.numPlayers){
       let ry=R0+i*RH;
-      nameInputs[i].position(off.x+318,off.y+ry+14);
+      nameInputs[i].position(off.x+328,off.y+ry+16);
+      nameInputs[i].size(176,24);
       nameInputs[i].show();
       if(i<gs.players.length)nameInputs[i].value(gs.players[i].name);
     }else{nameInputs[i].hide();}
@@ -862,7 +924,8 @@ function draw(){
   background(10,7,2);drawHexGrid();gs.anim++;
 
   if(gs.screen==='challenge'&&gs.challengePhase==='active'&&gs.timerActive&&gs.timer>0){
-    gs.timer--;if(gs.timer<=0){gs.timerActive=false;gs.screen='score';}
+    gs.timer--;
+    if(gs.timer<=0){gs.timerActive=false;gs.screen='score';}
   }
   if(gs.rolling){
     gs.rollFrame++;if(gs.rollFrame>22){gs.rolling=false;gs.rollFrame=0;doRoll();}
@@ -891,44 +954,45 @@ function mousePressed(){
 
 function handleSplash(){
   if(gs.hasSave){
-    if(isOver(W/2-118,H/2+2,236,44)){if(loadSavedGame())updateInputVis();return;}
-    if(isOver(W/2-84,H/2+58,168,32)){clearSave();gs.screen='setup';updateInputVis();return;}
-    if(isOver(W/2-44,H/2+102,88,22)){clearSave();return;}
+    if(isOver(W/2-128,H/2+8,256,50)){if(loadSavedGame())updateInputVis();return;}
+    if(isOver(W/2-84,H/2+72,168,36)){clearSave();gs.screen='setup';updateInputVis();return;}
+    if(isOver(W/2-44,H/2+120,88,24)){clearSave();return;}
   }else{
-    if(isOver(W/2-112,H/2+2,224,48)){gs.screen='setup';updateInputVis();}
+    if(isOver(W/2-128,H/2+8,256,50)){gs.screen='setup';updateInputVis();}
   }
 }
 
 function handleSetup(){
   [2,3,4,5,6].forEach((n,i)=>{
-    if(isOver(110+i*56,64,46,28)){
+    if(isOver(128+i*62,98,48,32)){
       gs.numPlayers=n;
       while(gs.players.length<n)
         gs.players.push({name:'Crew Member '+(gs.players.length+1),tokenIdx:gs.players.length%6,roleIdx:gs.players.length%5,defaultLevel:1});
+      while(gs.players.length>n)gs.players.pop();
       gs.scores=Array(n).fill(0);gs.positions=Array(n).fill(0);updateInputVis();
     }
   });
   for(let i=0;i<gs.numPlayers;i++){
     let ry=R0+i*RH,p=gs.players[i];
     TOKENS.forEach((_,ti)=>{
-      if(isOver(162+ti*22-10,ry+22,20,20)){
+      if(dist(mouseX,mouseY,186+ti*24,ry+32)<20){
         let inUse=gs.players.slice(0,gs.numPlayers).some((pp,pi)=>pi!==i&&pp.tokenIdx===ti);
         if(!inUse)p.tokenIdx=ti;
       }
     });
-    ROLES.forEach((_,ri)=>{if(isOver(162+ri*28-14,ry+50,28,20))p.roleIdx=ri;});
-    LEVELS.forEach((_,j)=>{if(isOver(520+j*72,ry+12,66,28))p.defaultLevel=j;});
+    ROLES.forEach((_,ri)=>{if(dist(mouseX,mouseY,186+ri*28,ry+62)<18)p.roleIdx=ri;});
+    LEVELS.forEach((_,j)=>{if(isOver(528+j*76,ry+12,70,34))p.defaultLevel=j;});
   }
-  let by=R0+gs.numPlayers*RH+12;
-  if(isOver(W/2-114,by,228,44)){
+  let by=R0+gs.numPlayers*RH+16;
+  if(isOver(W/2-128,by,256,50)){
     nameInputs.forEach((inp,i)=>{if(i<gs.numPlayers&&inp)gs.players[i].name=inp.value()||('Crew Member '+(i+1));});
     resetGame();
   }
 }
 
 function handleRoll(){
-  if(!gs.rolling&&!gs.diceRoll&&isOver(DX-60,DY+52,120,42)){gs.rolling=true;gs.rollFrame=0;}
-  if(!gs.rolling&&gs.diceRoll&&isOver(DX-102,DY+80,204,36)){
+  if(!gs.rolling&&!gs.diceRoll&&isOver(DX-76,DY+68,152,52)){gs.rolling=true;gs.rollFrame=0;}
+  if(!gs.rolling&&gs.diceRoll&&isOver(DX-128,DY+110,256,42)){
     gs.screen='challenge';gs.selectedLvl=null;gs.challengePhase='picking';
   }
 }
@@ -946,23 +1010,23 @@ function handleChallenge(){
       }
     });
   }else{
-    if(isOver(W/2-128,360,256,44)){gs.timerActive=false;gs.screen='score';}
-    if(isOver(W/2-88,414,176,28)){gs.timerActive=false;awardPoints(gs.currentTurn,0);}
+    if(isOver(W/2-140,412,280,48)){gs.timerActive=false;gs.screen='score';}
+    if(isOver(W/2-88,468,176,32)){gs.timerActive=false;awardPoints(gs.currentTurn,0);}
   }
 }
 
 function handleScore(){
   let l=lv(gs.selectedLvl??1),bw=(W-44)/(gs.numPlayers+1)-2;
   gs.players.slice(0,gs.numPlayers).forEach((_,i)=>{
-    if(isOver(20+i*(bw+2),196,bw,58))awardPoints(i,l.pts);
+    if(isOver(20+i*(bw+2),226,bw,66))awardPoints(i,l.pts);
   });
-  if(isOver(20+gs.numPlayers*(bw+2),196,bw,58))awardPoints(gs.currentTurn,0);
-  if(isOver(W/2-96,H-52,192,40))nextTurn();
+  if(isOver(20+gs.numPlayers*(bw+2),226,bw,66))awardPoints(gs.currentTurn,0);
+  if(isOver(W/2-112,H-52,224,44))nextTurn();
 }
 
 function handleWinner(){
-  if(isOver(W/2-100,H-66,200,42))resetGame();
-  if(isOver(W/2-100,H-116,200,32)){gs.screen='setup';updateInputVis();}
+  if(isOver(W/2-120,H-66,240,48))resetGame();
+  if(isOver(W/2-120,H-118,240,40)){gs.screen='setup';updateInputVis();}
 }
 
 // ── KEYBOARD ─────────────────────────────────────────────────────────
@@ -970,8 +1034,8 @@ function handleWinner(){
 function keyPressed(){
   if(gs.screen==='roll'){
     if(key===' '||keyCode===ENTER){
-      if(!gs.rolling&&!gs.diceRoll){gs.rolling=true;gs.rollFrame=0;}
-      else if(!gs.rolling&&gs.diceRoll){gs.screen='challenge';gs.selectedLvl=null;gs.challengePhase='picking';}
+      if(!gs.rolling&&!gs.diceRoll){gs.rolling=true;gs.rollFrame=0;return false;}
+      else if(!gs.rolling&&gs.diceRoll){gs.screen='challenge';gs.selectedLvl=null;gs.challengePhase='picking';return false;}
     }
   }
   if(gs.screen==='challenge'&&gs.challengePhase==='picking'){
@@ -979,17 +1043,18 @@ function keyPressed(){
       let li=int(key)-1;
       gs.selectedLvl=li;gs.currentQ=pickQ(curSq().t,li);
       gs.challengePhase='active';gs.timer=TIMER_F[li];gs.timerMax=TIMER_F[li];gs.timerActive=true;
+      return false;
     }
   }
   if(gs.screen==='score'){
-    if(keyCode===ENTER)nextTurn();
+    if(keyCode===ENTER){nextTurn();return false;}
     let l=lv(gs.selectedLvl??1);
-    for(let i=0;i<gs.numPlayers;i++)if(key===''+(i+1))awardPoints(i,l.pts);
-    if(key==='0')awardPoints(gs.currentTurn,0);
+    for(let i=0;i<gs.numPlayers;i++)if(key===''+(i+1)){awardPoints(i,l.pts);return false;}
+    if(key==='0'){awardPoints(gs.currentTurn,0);return false;}
   }
   if(gs.screen==='winner'){
-    if(key==='r'||key==='R')resetGame();
-    if(keyCode===ESCAPE){gs.screen='setup';updateInputVis();}
+    if(key==='r'||key==='R'){resetGame();return false;}
+    if(keyCode===ESCAPE){gs.screen='setup';updateInputVis();return false;}
   }
   if(key===' ')return false;
 }
@@ -1000,22 +1065,22 @@ function getHoverCursor(){
   let c=ARROW;
   if(gs.screen==='splash'){
     if(gs.hasSave){
-      if(isOver(W/2-118,H/2+2,236,44)||isOver(W/2-84,H/2+58,168,32)||isOver(W/2-44,H/2+102,88,22))c=HAND;
-    }else{if(isOver(W/2-112,H/2+2,224,48))c=HAND;}
+      if(isOver(W/2-128,H/2+8,256,50)||isOver(W/2-84,H/2+72,168,36)||isOver(W/2-44,H/2+120,88,24))c=HAND;
+    }else{if(isOver(W/2-128,H/2+8,256,50))c=HAND;}
   }
   if(gs.screen==='setup'){
-    [2,3,4,5,6].forEach((_,i)=>{if(isOver(110+i*56,64,46,28))c=HAND;});
-    if(isOver(W/2-114,R0+gs.numPlayers*RH+12,228,44))c=HAND;
+    [2,3,4,5,6].forEach((_,i)=>{if(isOver(128+i*62,98,48,32))c=HAND;});
+    if(isOver(W/2-128,R0+gs.numPlayers*RH+16,256,50))c=HAND;
     for(let i=0;i<gs.numPlayers;i++){
       let ry=R0+i*RH;
-      TOKENS.forEach((_,ti)=>{if(isOver(162+ti*22-10,ry+22,20,20))c=HAND;});
-      ROLES.forEach((_,ri)=>{if(isOver(162+ri*28-14,ry+50,28,20))c=HAND;});
-      LEVELS.forEach((_,j)=>{if(isOver(520+j*72,ry+12,66,28))c=HAND;});
+      TOKENS.forEach((_,ti)=>{if(dist(mouseX,mouseY,186+ti*24,ry+32)<20)c=HAND;});
+      ROLES.forEach((_,ri)=>{if(dist(mouseX,mouseY,186+ri*28,ry+62)<18)c=HAND;});
+      LEVELS.forEach((_,j)=>{if(isOver(528+j*76,ry+12,70,34))c=HAND;});
     }
   }
   if(gs.screen==='roll'){
-    if(!gs.rolling&&!gs.diceRoll&&isOver(DX-60,DY+52,120,42))c=HAND;
-    if(!gs.rolling&&gs.diceRoll&&isOver(DX-102,DY+80,204,36))c=HAND;
+    if(!gs.rolling&&!gs.diceRoll&&isOver(DX-76,DY+68,152,52))c=HAND;
+    if(!gs.rolling&&gs.diceRoll&&isOver(DX-128,DY+110,256,42))c=HAND;
   }
   if(gs.screen==='challenge'){
     if(gs.challengePhase==='picking'){
@@ -1025,16 +1090,16 @@ function getHoverCursor(){
         if(isOver(lx,148+row*256,lw,250))c=HAND;
       });
     }else{
-      if(isOver(W/2-128,360,256,44)||isOver(W/2-88,414,176,28))c=HAND;
+      if(isOver(W/2-140,412,280,48)||isOver(W/2-88,468,176,32))c=HAND;
     }
   }
   if(gs.screen==='score'){
     let bw=(W-44)/(gs.numPlayers+1)-2;
-    for(let i=0;i<=gs.numPlayers;i++)if(isOver(20+i*(bw+2),196,bw,58))c=HAND;
-    if(isOver(W/2-96,H-52,192,40))c=HAND;
+    for(let i=0;i<=gs.numPlayers;i++)if(isOver(20+i*(bw+2),226,bw,66))c=HAND;
+    if(isOver(W/2-112,H-52,224,44))c=HAND;
   }
   if(gs.screen==='winner'){
-    if(isOver(W/2-100,H-66,200,42)||isOver(W/2-100,H-116,200,32))c=HAND;
+    if(isOver(W/2-120,H-66,240,48)||isOver(W/2-120,H-118,240,40))c=HAND;
   }
   return c;
 }
