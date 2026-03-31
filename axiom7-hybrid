@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXIOM-7 — Mission Control Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0e0a04; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding-top:6px; }
+canvas { display:block; }
+.mct-input {
+  position:absolute; background:rgba(12,8,2,0.93);
+  border:1px solid rgba(186,133,42,0.42); border-radius:3px;
+  color:#d4a84b; font-family:'Courier Prime',monospace; font-size:11px;
+  outline:none; padding:4px 8px; pointer-events:auto; z-index:10;
+  letter-spacing:0.03em; transition:border-color 0.18s,box-shadow 0.18s;
+}
+.mct-input:focus { border-color:rgba(186,133,42,0.85); box-shadow:0 0 10px rgba(186,133,42,0.2); }
+.mct-input::placeholder { color:rgba(140,100,30,0.45); }
+</style>
+</head>
+<body>
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  AXIOM-7 — Hybrid Table Family Adventure
+//  Mission Control Terminal  v2.0
+// ────────────────────────────────────────────────────────────────────
+//  The app sits centre-table. Families play on a PHYSICAL printed
+//  board. The terminal manages challenges, crew roles, scoring,
+//  card references, and narration.
+//
+//  Design  : warm expedition — amber / teal / coral palette
+//  Fonts   : Cinzel (display)  ·  Courier Prime (body)
+//  Canvas  : 820 × 700
+// ════════════════════════════════════════════════════════════════════
+
+const W=820, H=700, FD='Cinzel', FB='Courier Prime';
+
+// ── CREW ROLES ───────────────────────────────────────────────────────
+const ROLES=[
+  {id:'captain',    label:'Captain',     icon:'🚀',col:[194,82,48]  },
+  {id:'navigator',  label:'Navigator',   icon:'🗺️',col:[48,148,148] },
+  {id:'engineer',   label:'Engineer',    icon:'🔧',col:[168,125,42] },
+  {id:'scientist',  label:'Scientist',   icon:'🔬',col:[88,148,98]  },
+  {id:'storyteller',label:'Storyteller', icon:'📖',col:[128,88,178] },
+];
+
+// ── TOKEN COLOURS (matching physical pieces) ─────────────────────────
+const TOKENS=[
+  {label:'Red',   col:[210,55,55]  },
+  {label:'Blue',  col:[48,118,210] },
+  {label:'Green', col:[48,158,78]  },
+  {label:'Gold',  col:[200,158,38] },
+  {label:'Purple',col:[138,58,198] },
+  {label:'Pink',  col:[210,78,148] },
+];
+
+// ── DIFFICULTY ───────────────────────────────────────────────────────
+const LEVELS=[
+  {id:0,label:'Explorer',  sym:'◇',pts:1,col:[88,168,108] },
+  {id:1,label:'Pathfinder',sym:'◈',pts:2,col:[48,148,178] },
+  {id:2,label:'Pioneer',   sym:'◆',pts:3,col:[188,138,38] },
+  {id:3,label:'Vanguard',  sym:'★',pts:4,col:[194,72,48]  },
+];
+const TIMER_F=[5400,4500,3600,2700];
+
+// ── 20 ADVENTURE LOCATIONS ───────────────────────────────────────────
+const SQ=[
+  {id:0, t:'start',  code:'--',  ic:'🌍',label:'Earth HQ',             sub:'Departure point'},
+  {id:1, t:'trivia', code:'T-01',ic:'🤖',label:'NOVA Station',          sub:'AI trivia'},
+  {id:2, t:'create', code:'C-01',ic:'🎨',label:"Cartographers' Map",    sub:'Creative challenge'},
+  {id:3, t:'puzzle', code:'P-01',ic:'⚙️', label:"CHIP's Logic Bay",     sub:'Logic puzzle'},
+  {id:4, t:'explain',code:'E-01',ic:'📢',label:'Crew Briefing Room',    sub:'Explain it!'},
+  {id:5, t:'family', code:'F-01',ic:'🌀',label:'The Rift Zone',         sub:'Family moment'},
+  {id:6, t:'trivia', code:'T-02',ic:'🔬',label:'Titan Research Lab',    sub:'AI trivia'},
+  {id:7, t:'code',   code:'K-01',ic:'💻',label:'The Hyperdrive Core',   sub:'Coding challenge'},
+  {id:8, t:'create', code:'C-02',ic:'🎨',label:'The Gallery Nebula',    sub:'Creative challenge'},
+  {id:9, t:'perform',code:'R-01',ic:'🎭',label:'Robot Theatre',         sub:'Perform!'},
+  {id:10,t:'puzzle', code:'P-02',ic:'☄️', label:'Asteroid Belt',         sub:'Logic puzzle'},
+  {id:11,t:'trivia', code:'T-03',ic:'🌌',label:'Deep Observatory',      sub:'AI trivia'},
+  {id:12,t:'family', code:'F-02',ic:'☀️', label:'Solar Flare Station',   sub:'Family moment'},
+  {id:13,t:'code',   code:'K-02',ic:'💻',label:"LYRA's Code Vault",     sub:'Coding challenge'},
+  {id:14,t:'create', code:'C-03',ic:'🎨',label:'Exoplanet Survey',      sub:'Creative challenge'},
+  {id:15,t:'trivia', code:'T-04',ic:'🧑‍🚀',label:'The Command Bridge',    sub:'AI trivia'},
+  {id:16,t:'puzzle', code:'P-03',ic:'🛸',label:'Space Station Iris',    sub:'Logic puzzle'},
+  {id:17,t:'create', code:'C-04',ic:'🌠',label:'The Void Canvas',       sub:'Creative challenge'},
+  {id:18,t:'explain',code:'E-02',ic:'📡',label:'Final Mission Debrief', sub:'Explain it!'},
+  {id:19,t:'finish', code:'--',  ic:'🏁',label:'Nebula of Knowledge',   sub:'Mission complete!'},
+];
+
+// Square themes
+const TH={
+  start:  {bg:[14,10,4],  bd:[186,133,42],tc:[220,175,85] },
+  trivia: {bg:[4,10,18],  bd:[48,148,178],tc:[118,188,218]},
+  puzzle: {bg:[10,16,6],  bd:[88,158,68], tc:[138,198,108]},
+  explain:{bg:[18,12,4],  bd:[186,133,42],tc:[220,175,85] },
+  family: {bg:[20,8,4],   bd:[194,82,48], tc:[230,128,88] },
+  code:   {bg:[8,4,14],   bd:[128,88,178],tc:[178,138,218]},
+  create: {bg:[4,14,14],  bd:[48,148,148],tc:[98,188,188] },
+  perform:{bg:[18,8,14],  bd:[194,72,108],tc:[230,118,158]},
+  finish: {bg:[14,10,4],  bd:[186,133,42],tc:[220,175,85] },
+};
+
+// Role instructions per square type
+const RI={
+  trivia: {read:'Navigator',  judge:'Engineer',    award:'Captain'},
+  puzzle: {read:'Navigator',  judge:'Scientist',   award:'Captain'},
+  explain:{read:'Storyteller',judge:'Engineer',    award:'Captain'},
+  code:   {read:'Navigator',  judge:'Scientist',   award:'Captain'},
+  create: {read:'Navigator',  judge:'Storyteller', award:'Captain'},
+  perform:{read:'Storyteller',judge:'everyone',    award:'Captain'},
+  family: {read:'Captain',    judge:'everyone',    award:'everyone'},
+  start:  {read:'—',judge:'—',award:'—'},
+  finish: {read:'—',judge:'—',award:'—'},
+};
+
+// ── QUESTION BANK ─────────────────────────────────────────────────────
+const QB={
+  trivia:[
+    [
+      {q:"What does AI stand for?",a:"Artificial Intelligence — machines designed to think and learn.",hint:"What makes humans different from simple machines?",card:"T-01"},
+      {q:"Can AI feel emotions?",a:"No — AI simulates responses but has no consciousness or feelings.",hint:"What separates feelings from processing?",card:"T-01"},
+      {q:"Name one device at home that uses AI.",a:"Smart speaker, phone assistant, smart TV, streaming service!",hint:"Which device seems to know your preferences?",card:"T-01"},
+    ],
+    [
+      {q:"What is machine learning?",a:"When a computer learns patterns from examples rather than fixed rules.",hint:"How did you learn to recognise a cat?",card:"T-02"},
+      {q:"What is an algorithm?",a:"A step-by-step set of instructions a computer follows to solve a problem.",hint:"Think of a recipe — precise, ordered steps.",card:"T-02"},
+      {q:"Difference between AI and a normal program?",a:"A normal program follows fixed rules. AI learns its own rules from data.",hint:"One is told what to do; the other figures it out.",card:"T-02"},
+    ],
+    [
+      {q:"What is a neural network?",a:"Connected nodes inspired by the human brain, used to recognise patterns.",hint:"Neurons firing when you see something familiar.",card:"T-03"},
+      {q:"What is training data?",a:"The labelled examples used to teach an AI model — quality and quantity both matter.",hint:"Garbage in, garbage out.",card:"T-03"},
+      {q:"What is supervised learning?",a:"Training AI with labelled data where the correct answers are provided.",hint:"Like marked homework — the teacher provides answers.",card:"T-03"},
+    ],
+    [
+      {q:"What is overfitting?",a:"A model that memorises training data so well it fails on new, unseen examples.",hint:"A student who memorises answers but can't apply concepts.",card:"T-04"},
+      {q:"Narrow AI vs AGI?",a:"Narrow AI does one task. AGI would reason across any domain — it doesn't exist yet.",hint:"Can the AI that plays chess also drive a car?",card:"T-04"},
+      {q:"What are deepfakes and why are they risky?",a:"AI-generated fake videos of real people — spread misinformation and erode trust.",hint:"Think about evidence and truth.",card:"T-04"},
+    ],
+  ],
+  puzzle:[
+    [
+      {q:"Order the steps for baking a cake:\nB) Mix ingredients\nA) Preheat oven\nC) Eat cake!",a:"A → B → C — ordered steps = an algorithm! You can't eat before you bake.",hint:"What must happen before what?",card:"P-01"},
+      {q:"True or False: 5 > 3  AND  2 < 4",a:"TRUE — both conditions are true, so AND returns true.",hint:"Both sides of AND must be true.",card:"P-01"},
+      {q:"If x = 4, what is x + x?",a:"8 — a variable is just a named box storing a value.",hint:"Replace the letter with its value.",card:"P-01"},
+    ],
+    [
+      {q:"What comes next?\n2, 4, 8, 16, __?",a:"32 — doubles each time. This is exponential growth!",hint:"What operation links each pair?",card:"P-02"},
+      {q:"Spot the bug:\nfor i in range(5): print(i)\nExpected: 1,2,3,4,5  Got: 0,1,2,3,4",a:"range(5) starts at 0. Fix: range(1,6)",hint:"Python's range starts at 0 by default.",card:"P-02"},
+      {q:"What does this output?\nfor i in range(3): print(i*2)",a:"0, 2, 4 — multiplies each index by 2.",hint:"Work through it one step at a time.",card:"P-02"},
+    ],
+    [
+      {q:"Why might AI mistake a wolf for a husky?",a:"Training photos had wolves in snow & huskies on grass — AI learned 'snow = wolf' not the actual animal.",hint:"What else was in the background?",card:"P-03"},
+      {q:"Rank fastest to slowest:\nO(n²), O(1), O(log n), O(n)",a:"O(1) → O(log n) → O(n) → O(n²)",hint:"O(1) = constant time, doesn't grow.",card:"P-03"},
+      {q:"True or False: More data always improves an AI model.",a:"FALSE — biased or low-quality data can make performance worse.",hint:"Would you learn maths from a wrong textbook?",card:"P-03"},
+    ],
+    [
+      {q:"Deploy model A (train 99%, test 60%) or B (train 85%, test 83%)? Why?",a:"Model B — huge gap in A shows overfitting. B generalises far better.",hint:"Which would you trust on unseen data?",card:"P-04"},
+      {q:"When would you choose unsupervised learning?",a:"When you have data but no labels — to find hidden patterns or natural clusters.",hint:"What if you don't know the categories in advance?",card:"P-04"},
+      {q:"Explain the bias-variance tradeoff in one sentence.",a:"Low bias tends to cause high variance — underfitting vs overfitting, you must balance both.",hint:"Underfitting vs overfitting.",card:"P-04"},
+    ],
+  ],
+  explain:[
+    [
+      {q:"Explain what AI is to a 5-year-old!",a:"A very clever robot brain that learns by seeing millions of examples — like you learned to recognise dogs!",hint:"Use something they already know.",card:"E-01"},
+      {q:"What is a computer program? No jargon!",a:"A numbered list of instructions telling the computer exactly what to do, one step at a time.",hint:"Instructions for a board game!",card:"E-01"},
+      {q:"Why do we use passwords?",a:"To prove we are who we say we are — security depends on secrets only you should know.",hint:"What would happen without them?",card:"E-01"},
+    ],
+    [
+      {q:"Explain machine learning using a cooking metaphor.",a:"Traditional programming: follow a recipe. Machine learning: taste thousands of dishes until you figure out the recipe yourself.",hint:"Who writes the recipe?",card:"E-02"},
+      {q:"Explain how a search engine works — simply!",a:"It reads billions of web pages, scores them for relevance, and returns the most useful ones first — in milliseconds.",hint:"Index, rank, return.",card:"E-02"},
+      {q:"What is data and why does it matter for AI?",a:"Data is recorded information. AI needs huge numbers of examples to learn patterns — no data, no intelligence.",hint:"What does AI actually learn from?",card:"E-02"},
+    ],
+    [
+      {q:"Explain the difference between AI and a calculator.",a:"A calculator follows fixed pre-written rules. AI learns its own rules from data and handles unseen problems.",hint:"Could a calculator recognise your face?",card:"E-03"},
+      {q:"Explain how Netflix recommends shows.",a:"It finds users similar to you, identifies what they rated highly, and predicts what you'll enjoy — collaborative filtering.",hint:"Has it ever recommended something surprisingly perfect?",card:"E-03"},
+      {q:"Supervised vs unsupervised learning — what's the difference?",a:"Supervised: labelled data, teacher provided. Unsupervised: no labels — the model finds patterns on its own.",hint:"Learning with a teacher vs without one.",card:"E-03"},
+    ],
+    [
+      {q:"Name and explain three ethical risks of AI.",a:"Any three: bias, privacy erosion, job displacement, deepfakes, autonomous weapons, lack of accountability.",hint:"Fairness, data, jobs, truth, safety.",card:"E-04"},
+      {q:"Explain narrow AI versus AGI.",a:"Narrow AI does one task (all AI today). AGI would reason across any domain like a human — it doesn't exist yet.",hint:"Can the AI that plays chess also cook dinner?",card:"E-04"},
+      {q:"Why does explainability matter in AI?",a:"If we can't understand why an AI decided something, we can't verify fairness or fix errors — critical in medicine and law.",hint:"What if a doctor couldn't explain their diagnosis?",card:"E-04"},
+    ],
+  ],
+  code:[
+    [
+      {q:"What does this print?\nconsole.log('AXIOM-7')",a:"It prints: AXIOM-7",hint:"What's inside the quotes?",card:"K-01"},
+      {q:"x = 5\nx = x + 1\nWhat is x now?",a:"6 — the old value is used to calculate the new value.",hint:"Read right to left: calculate, then store.",card:"K-01"},
+      {q:"True or False: 3 === 3",a:"TRUE — triple equals checks both value AND type.",hint:"Same value, same type?",card:"K-01"},
+    ],
+    [
+      {q:"What does this output?\nfor(let i=0; i<3; i++) console.log(i);",a:"0, 1, 2 — starts at 0, stops before 3.",hint:"When exactly does the loop stop?",card:"K-02"},
+      {q:"Spot the bug:\nif x = 5 { console.log('yes'); }",a:"= should be == or ===. Single = assigns; == or === compares.",hint:"Assignment vs comparison.",card:"K-02"},
+      {q:"What does .length return?\nlet arr=[10,20,30]; arr.length",a:"3 — the number of items in the array.",hint:"How many items are in the list?",card:"K-02"},
+    ],
+    [
+      {q:"What does [3,1,2].sort() return?",a:"[1,2,3] by default. Warning: default sort is alphabetical — breaks for numbers over 9!",hint:"What order does it use?",card:"K-03"},
+      {q:"Explain:\narr.filter(x => x > 5)",a:"Returns a new array containing only elements greater than 5.",hint:"Filter = keep what matches.",card:"K-03"},
+      {q:"What is a function parameter?",a:"A named input slot letting you pass different values to the same function each call.",hint:"The blank spaces in a template.",card:"K-03"},
+    ],
+    [
+      {q:"Trace this:\n[1,2,3].reduce((acc,v) => acc+v, 0)",a:"0+1=1, 1+2=3, 3+3=6. Returns 6. Reduce folds an array into one value.",hint:"acc is the running total, starts at 0.",card:"K-04"},
+      {q:"What is recursion?",a:"When a function calls itself with a smaller version of the problem, stopping at a base case.",hint:"Russian dolls.",card:"K-04"},
+      {q:"What does O(n) time complexity mean?",a:"Run time grows linearly with input size — double the data, roughly double the time.",hint:"How does performance scale as input grows?",card:"K-04"},
+    ],
+  ],
+  create:[
+    [
+      {q:"What shape does p5.js draw?\nrect(100,100,200,50)",a:"A rectangle — 200px wide, 50px tall, at (100,100).",hint:"rect(x,y,width,height)",card:"C-01"},
+      {q:"What colour is fill(255,0,0)?",a:"Bright red — RGB: 255 red, 0 green, 0 blue.",hint:"Max is 255. R=red, G=green, B=blue.",card:"C-01"},
+      {q:"Describe a robot face in p5.js — what shapes?",a:"circle for head, two smaller circles for eyes, rect for mouth. Use fill() for colour!",hint:"Start with the biggest shape first.",card:"C-01"},
+    ],
+    [
+      {q:"How would you draw 5 circles in a row?",a:"for(let i=0;i<5;i++) circle(50+i*80,200,40);\nEach is 80px further right.",hint:"What does i*80 do to x each step?",card:"C-02"},
+      {q:"What does background(0) do each frame?",a:"Fills the canvas with black — clears previous frames. Essential for animation.",hint:"0=black, 255=white.",card:"C-02"},
+      {q:"Describe a simple flag design using only rectangles and circles.",a:"Any creative flag — Navigator: read it aloud, Storyteller: judge creativity!",hint:"What does your flag represent?",card:"C-02"},
+    ],
+    [
+      {q:"How would you animate a ball moving across the screen?",a:"let x=0; in draw(): circle(x,200,40); x++;\nThe x increases each frame, creating movement.",hint:"Change a variable by a small amount each frame.",card:"C-03"},
+      {q:"What does random(50,150) return?",a:"A random decimal between 50 and 150 — different every time called.",hint:"Great for natural varied positions and sizes.",card:"C-03"},
+      {q:"Describe a piece of generative art using for loops and colour.",a:"Storyteller judges creativity! Any idea using loops — spirals, grids, constellations — scores!",hint:"What repeating pattern exists in nature?",card:"C-03"},
+    ],
+    [
+      {q:"Describe a particle system — 50 circles flying in random directions.",a:"Array of {x,y,vx,vy} objects. Each frame: add velocity to position. If off-screen, reset.",hint:"Position + velocity = movement. Think physics.",card:"C-04"},
+      {q:"What is Perlin noise vs random()?",a:"noise() returns smooth flowing values — great for terrain and organic movement. random() gives jagged jumps.",hint:"Mountains vs static — which looks more natural?",card:"C-04"},
+      {q:"Describe a recursive tree in p5.js.",a:"function branch(x,y,len,angle): draw line, call branch twice with shorter len and ±angle, stop when len < 4.",hint:"The function calls itself with smaller values.",card:"C-04"},
+    ],
+  ],
+  perform:(()=>{
+    const pq=[
+      {q:"Act out BOLT the robot meeting a human for the very first time!\nBOLT has never seen a human before.",a:"Crew votes — most creative performance wins!\nCaptain: award 2 pts to winner.",hint:"Confused robot, scanning, processing, misunderstanding...",card:"R-01"},
+      {q:"Mime BOLT downloading a software update mid-conversation!",a:"Crew votes — best freeze-and-reboot sequence wins!\nCaptain: award 2 pts.",hint:"System... updating... 23%... please wait...",card:"R-01"},
+      {q:"Act out reinforcement learning:\nBOLT must learn to open a door through trial and error!",a:"Demonstrate fail → reward → improve!\nCaptain: award 2 pts to winner.",hint:"Each attempt should visibly improve.",card:"R-01"},
+    ];
+    return [pq,pq,pq,pq];
+  })(),
+  family:(()=>{
+    const fq=[
+      {q:"🌀 RIFT ZONE — Crew Shout-Out!\nEvery crew member says one thing another crew member does brilliantly. Go around the table!",a:"No scoring — just good vibes! Captain calls next turn.",hint:"Be specific and kind.",card:"F-01"},
+      {q:"⚡ SOLAR FLARE — Energy Boost!\nThe crew member with fewest points gets a free +2 bonus!",a:"Captain: award +2 to lowest scorer. If tied, all tied players receive +2.",hint:"Catch-up mechanic — keeps everyone in the game!",card:"F-02"},
+      {q:"🛸 CREW VOTE — 30 seconds!\nThe whole crew names 5 uses of AI in healthcare. Go!",a:"Any 5: diagnosis, drug discovery, medical imaging, patient monitoring, admin, robotic surgery, mental health chatbots...",hint:"Where do doctors and computers meet?",card:"F-01"},
+    ];
+    return [fq,fq,fq,fq];
+  })(),
+  start:(()=>{const q=[{q:"Launch Pad — free space! Move your token!",a:"Move along!",hint:"",card:"--"}];return[q,q,q,q];})(),
+  finish:(()=>{const q=[{q:"You've reached the Nebula of Knowledge!",a:"Mission complete!",hint:"",card:"--"}];return[q,q,q,q];})(),
+};
+
+
+// ── GAME STATE ────────────────────────────────────────────────────────
+let gs={
+  screen:'splash', numPlayers:2,
+  players:[
+    {name:'Crew Member 1',tokenIdx:0,roleIdx:0,defaultLevel:1},
+    {name:'Crew Member 2',tokenIdx:1,roleIdx:1,defaultLevel:1},
+  ],
+  positions:[0,0], scores:[0,0], currentTurn:0,
+  diceRoll:null, selectedSq:null, selectedLvl:null,
+  challengePhase:'picking', currentQ:null,
+  levelPreviews:null, previewSqId:-1,
+  timer:0, timerMax:0, timerActive:false,
+  winner:null, hasSave:false,
+  anim:0, rolling:false, rollFrame:0,
+  scoreAnim:null, missionLog:[],
+};
+
+let nameInputs=[], hexGrid=[];
+
+// helpers
+function sqTh(t){return TH[t]||TH.trivia;}
+function lv(id){return LEVELS[id]||LEVELS[1];}
+function cur(){return gs.players[gs.currentTurn];}
+function curPos(){return gs.positions[gs.currentTurn];}
+function curSq(){return SQ[gs.selectedSq??curPos()];}
+function curRole(){return ROLES[cur().roleIdx%ROLES.length];}
+function curToken(){return TOKENS[cur().tokenIdx%TOKENS.length];}
+function isOver(x,y,w,h){return mouseX>=x&&mouseX<=x+w&&mouseY>=y&&mouseY<=y+h;}
+function a(alpha){return alpha;}  // shorthand, alpha inline
+
+function pickQ(type,lvl){
+  let bank=(QB[type]||QB.trivia)[min(lvl,3)];
+  let v=bank.filter(q=>q.q.length>0);
+  return v[floor(random(v.length))];
+}
+
+function addLog(msg){
+  gs.missionLog.unshift(msg);
+  if(gs.missionLog.length>6)gs.missionLog.pop();
+}
+
+// ── GAME LOGIC ────────────────────────────────────────────────────────
+
+function doRoll(){
+  let d=floor(random(1,7));
+  gs.diceRoll=d;
+  let newPos=min(curPos()+d,19);
+  gs.positions[gs.currentTurn]=newPos;
+  gs.selectedSq=newPos;
+  gs.levelPreviews=null; gs.previewSqId=-1;
+  let sq=SQ[newPos], tk=curToken();
+  addLog('🎲 '+cur().name+' rolled '+d+' → '+sq.label);
+  if(newPos===19){gs.winner=gs.currentTurn;gs.screen='winner';}
+  else if(sq.t==='start'){nextTurn();}
+  else{
+    gs.screen='challenge'; gs.selectedLvl=null;
+    gs.challengePhase='picking'; gs.currentQ=null; gs.timerActive=false;
+  }
+  saveGame();
+}
+
+function awardPoints(playerIdx,pts){
+  if(playerIdx<0||playerIdx>=gs.numPlayers)return;
+  gs.scores[playerIdx]=max(0,gs.scores[playerIdx]+pts);
+  gs.scoreAnim={player:playerIdx,pts,frame:0};
+  if(pts>0)addLog('⭐ '+gs.players[playerIdx].name+' +'+pts+' pts');
+  gs.screen='score'; saveGame();
+}
+
+function nextTurn(){
+  gs.currentTurn=(gs.currentTurn+1)%gs.numPlayers;
+  gs.diceRoll=null; gs.selectedSq=null; gs.selectedLvl=null;
+  gs.challengePhase='picking'; gs.currentQ=null;
+  gs.timerActive=false; gs.timer=0; gs.levelPreviews=null;
+  gs.screen='roll'; updateInputVis(); saveGame();
+}
+
+function resetGame(){
+  gs.positions=Array(gs.numPlayers).fill(0);
+  gs.scores=Array(gs.numPlayers).fill(0);
+  gs.currentTurn=0; gs.diceRoll=null; gs.selectedSq=null;
+  gs.selectedLvl=null; gs.challengePhase='picking'; gs.currentQ=null;
+  gs.timerActive=false; gs.timer=0; gs.winner=null;
+  gs.rolling=false; gs.levelPreviews=null; gs.missionLog=[];
+  gs.screen='roll'; updateInputVis(); saveGame();
+}
+
+// ── PERSISTENCE ───────────────────────────────────────────────────────
+
+function saveGame(){
+  try{localStorage.setItem('axiom7v2',JSON.stringify({
+    numPlayers:gs.numPlayers,players:gs.players,positions:gs.positions,
+    scores:gs.scores,currentTurn:gs.currentTurn,winner:gs.winner,
+    missionLog:gs.missionLog,
+  }));}catch(e){}
+}
+function loadSavedGame(){
+  try{
+    let d=JSON.parse(localStorage.getItem('axiom7v2'));
+    if(!d||!d.players)return false;
+    Object.assign(gs,{numPlayers:d.numPlayers,players:d.players,
+      positions:d.positions,scores:d.scores,currentTurn:d.currentTurn,
+      winner:d.winner,missionLog:d.missionLog||[]});
+    gs.screen=d.winner!==null?'winner':'roll'; return true;
+  }catch(e){return false;}
+}
+function checkForSave(){
+  try{let d=JSON.parse(localStorage.getItem('axiom7v2'));return!!(d&&d.players&&d.positions);}
+  catch(e){return false;}
+}
+function clearSave(){try{localStorage.removeItem('axiom7v2');}catch(e){}gs.hasSave=false;}
+
+// ── HEX GRID BACKGROUND ───────────────────────────────────────────────
+
+function buildHexGrid(){
+  hexGrid=[];
+  let r=22,dx=r*1.73,dy=r*1.5;
+  for(let row=-1;row<H/dy+2;row++)
+    for(let col=-1;col<W/dx+2;col++){
+      let ox=(row%2)*dx/2;
+      hexGrid.push({x:col*dx+ox,y:row*dy});
+    }
+}
+
+function drawHexGrid(){
+  let t=gs.anim*0.008; noFill();
+  hexGrid.forEach(h=>{
+    let dist=sqrt((h.x-W/2)**2+(h.y-H/2)**2);
+    let wave=0.28+0.14*sin(t-dist*0.012);
+    stroke(186,133,42,10*wave); strokeWeight(0.45);
+    let r=22; beginShape();
+    for(let i=0;i<6;i++){let a2=i*PI/3;vertex(h.x+r*cos(a2),h.y+r*sin(a2));}
+    endShape(CLOSE);
+  });
+  noStroke();
+}
+
+// ── UI PRIMITIVES ─────────────────────────────────────────────────────
+
+function glow(col,amt){
+  try{drawingContext.shadowBlur=amt;drawingContext.shadowColor=`rgba(${col[0]},${col[1]},${col[2]},0.65)`;}catch(e){}
+}
+function clearGlow(){try{drawingContext.shadowBlur=0;drawingContext.shadowColor='transparent';}catch(e){}}
+
+function box(x,y,w,h,r,bg,bd,bw){
+  fill(...bg);stroke(...bd);strokeWeight(bw||1);rect(x,y,w,h,r||4);
+}
+
+function btn(label,x,y,w,h,bg,tc,sz,bdCol){
+  let hov=isOver(x,y,w,h),prs=mouseIsPressed&&hov;
+  let b=prs?bg.map(v=>max(0,v-28)):hov?bg.map(v=>min(255,v+18)):bg;
+  let bd=bdCol||bg.map(v=>min(255,v+40));
+  fill(...b);stroke(...bd,140);strokeWeight(0.8);rect(x,y,w,h,4);
+  noStroke();fill(...tc);textSize(sz||10);textAlign(CENTER,CENTER);
+  textFont(FD);text(label,x+w/2,y+h/2);textFont(FB);
+}
+
+function lbl(str,x,y,col,sz,al,fnt){
+  fill(...col);noStroke();textSize(sz||10);
+  textFont(fnt||FB);textAlign(al||LEFT,CENTER);text(str,x,y);
+}
+
+function hdr(title,col){
+  fill(...col,18);noStroke();rect(0,0,W,52);
+  stroke(...col,52);strokeWeight(0.8);line(0,52,W,52);noStroke();
+  glow(col,16);fill(...col,235);textSize(12);textAlign(LEFT,CENTER);
+  textFont(FD);textStyle(BOLD);text(title,20,26);textStyle(NORMAL);clearGlow();
+  textFont(FB);
+}
+
+function divider(y,col){
+  stroke(...col,52);strokeWeight(0.55);line(20,y,W-20,y);
+  fill(...col,85);noStroke();circle(W/2,y,4);circle(20,y,2.5);circle(W-20,y,2.5);
+}
+
+function drawMissionLog(x,y,w,h){
+  fill(8,5,2,162);stroke(186,133,42,35);strokeWeight(0.5);rect(x,y,w,h,4);noStroke();
+  lbl('MISSION LOG',x+8,y+11,[186,133,42,110],7.5,LEFT,FD);
+  gs.missionLog.forEach((msg,i)=>lbl(msg,x+8,y+24+i*14,[186,133,42,80-i*8],8));
+}
+
+function drawTurnBar(){
+  if(['setup','splash','winner'].includes(gs.screen))return;
+  let rl=curRole(),tk=curToken();
+  fill(6,4,1,148);noStroke();rect(0,H-22,W,22);
+  lbl(rl.icon+' '+cur().name+' ('+tk.label+' token)  ·  Square '+curPos()+'  ·  '+gs.scores[gs.currentTurn]+' pts',
+    10,H-11,[186,133,42,140],8.5,LEFT,FD);
+  let kh={roll:'SPACE=roll',challenge:'1-4=level',score:'ENTER=next turn'}[gs.screen]||'';
+  lbl(kh,W-8,H-11,[186,133,42,68],8,RIGHT,FD);
+}
+
+// ── SCREEN: SPLASH ────────────────────────────────────────────────────
+
+function drawSplash(){
+  let p=0.85+0.15*sin(gs.anim*0.04);
+  glow([186,133,42],28*p);
+  fill(186,133,42,238);textSize(50);textAlign(CENTER,CENTER);
+  textFont(FD);textStyle(BOLD);text('AXIOM-7',W/2,H/2-148);
+  textStyle(NORMAL);clearGlow();
+  textFont(FB);
+  fill(138,108,58,170);textSize(11);textAlign(CENTER,CENTER);
+  text('MISSION CONTROL TERMINAL  ·  HYBRID TABLE ADVENTURE',W/2,H/2-106);
+
+  // Instruction bar
+  fill(12,8,2,148);stroke(48,148,148,40);strokeWeight(0.5);
+  rect(W/2-236,H/2-92,472,26,3);noStroke();
+  fill(48,148,148,165);textSize(10);textAlign(CENTER,CENTER);
+  text('Place your printed board on the table · Sit around it · Use this terminal together',W/2,H/2-79);
+
+  divider(H/2-60,[186,133,42,100]);
+
+  // Crew roles
+  lbl('CREW ROLES',W/2,H/2-44,[186,133,42,128],8,CENTER,FD);
+  ROLES.forEach((r,i)=>{
+    let rx=W/2-214+i*107;
+    fill(...r.col,16);stroke(...r.col,55);strokeWeight(0.5);rect(rx-46,H/2-36,92,22,3);noStroke();
+    lbl(r.icon+' '+r.label,rx,H/2-25,[...r.col,200],9,CENTER,FD);
+  });
+
+  if(gs.hasSave){
+    btn('▶  CONTINUE MISSION',W/2-118,H/2+2,236,44,[22,15,3],[186,133,42,240],13,[186,133,42,100]);
+    btn('+ NEW MISSION',W/2-84,H/2+58,168,32,[16,10,3],[48,148,148,200],10,[48,148,148,80]);
+    btn('CLEAR SAVE',W/2-44,H/2+102,88,22,[18,6,4],[194,82,48,160],8,[194,82,48,60]);
+  }else{
+    btn('▶  BEGIN MISSION',W/2-112,H/2+2,224,48,[22,15,3],[186,133,42,240],14,[186,133,42,100]);
+  }
+
+  fill(12,8,2,118);stroke(186,133,42,20);strokeWeight(0.4);rect(W-122,H-26,116,20,3);noStroke();
+  lbl('AXIOM-7  Hybrid v2.0',W-64,H-16,[186,133,42,78],7.5,CENTER,FD);
+}
+
+// ── SCREEN: SETUP ─────────────────────────────────────────────────────
+
+const R0=118,RH=64;
+
+function drawSetup(){
+  hdr('⚙  MISSION SETUP — Assign Your Crew',[186,133,42]);
+
+  // Player count
+  fill(10,7,2,152);stroke(186,133,42,38);strokeWeight(0.6);rect(18,58,W-36,44,4);noStroke();
+  lbl('CREW SIZE:',30,80,[186,133,42,140],9,LEFT,FD);
+  [2,3,4,5,6].forEach((n,i)=>{
+    let act=gs.numPlayers===n;
+    btn(''+n,110+i*56,64,46,28,
+      act?[22,15,3]:[14,10,3],[186,133,42,act?240:110],13,
+      [186,133,42,act?140:40]);
+  });
+
+  // Player rows
+  for(let i=0;i<gs.numPlayers;i++){
+    let ry=R0+i*RH,p=gs.players[i];
+    let tk=TOKENS[p.tokenIdx%TOKENS.length];
+    let rl=ROLES[p.roleIdx%ROLES.length];
+    fill(10,7,2,152);stroke(186,133,42,26);strokeWeight(0.55);rect(18,ry,W-36,58,4);noStroke();
+
+    // Token swatch
+    fill(...tk.col,195);noStroke();rect(26,ry+6,40,46,3);
+    fill(...tk.col,255);textSize(9.5);textAlign(CENTER,CENTER);
+    text(tk.label,46,ry+24);textSize(7.5);text('token',46,ry+36);
+
+    // Role badge
+    fill(...rl.col,18);stroke(...rl.col,55);strokeWeight(0.5);rect(72,ry+6,76,46,3);noStroke();
+    textSize(16);textAlign(CENTER,CENTER);text(rl.icon,110,ry+24);
+    lbl(rl.label,110,ry+40,[...rl.col,200],8,CENTER,FD);
+
+    // Token selectors
+    lbl('TOKEN:',156,ry+15,[186,133,42,88],7,LEFT,FD);
+    TOKENS.forEach((tok,ti)=>{
+      let act=p.tokenIdx===ti;
+      let inUse=gs.players.slice(0,gs.numPlayers).some((pp,pi)=>pi!==i&&pp.tokenIdx===ti);
+      fill(...tok.col,inUse?28:act?205:95);noStroke();
+      circle(170+ti*22,ry+30,act?16:12);
+      if(act){stroke(...tok.col,195);strokeWeight(1.4);noFill();circle(170+ti*22,ry+30,19);noStroke();}
+      if(inUse){stroke(70,50,30,90);strokeWeight(0.7);noFill();circle(170+ti*22,ry+30,14);noStroke();}
+    });
+
+    // Role selectors
+    lbl('ROLE:',156,ry+46,[186,133,42,88],7,LEFT,FD);
+    ROLES.forEach((r,ri)=>{
+      let act=p.roleIdx===ri;
+      fill(...r.col,act?180:58);noStroke();circle(170+ri*28,ry+58,act?14:10);
+      textSize(act?12:9);textAlign(CENTER,CENTER);text(r.icon,170+ri*28,ry+58);
+    });
+
+    // Name input area (HTML input overlays)
+    fill(8,5,2,158);stroke(186,133,42,52);strokeWeight(0.6);rect(316,ry+12,194,28,3);noStroke();
+
+    // Difficulty selector
+    LEVELS.forEach((lev,j)=>{
+      let act2=p.defaultLevel===lev.id;
+      btn(lev.sym+' '+lev.label,520+j*72,ry+12,66,28,
+        act2?lev.col.map(v=>v*0.28):lev.col.map(v=>v*0.1),
+        act2?[255,255,255]:lev.col.map(v=>v*0.75+35),
+        7,lev.col.map(v=>v*0.5));
+    });
+  }
+
+  let by=R0+gs.numPlayers*RH+12;
+  btn('▶  LAUNCH MISSION',W/2-114,by,228,44,[22,14,2],[186,133,42,240],14,[186,133,42,100]);
+  lbl('Place all tokens on Earth HQ (Square 0) before launching!',W/2,by+58,[186,133,42,80],8.5,CENTER,FD);
+}
+
+// ── SCREEN: ROLL ──────────────────────────────────────────────────────
+
+const DX=W/2,DY=378;
+
+function drawRoll(){
+  let cp=cur(),rl=curRole(),tk=curToken();
+  hdr(rl.icon+'  '+cp.name+'  ·  '+rl.label+' — Your Turn',rl.col);
+
+  // Scoreboard strip
+  let sw=(W-40)/gs.numPlayers-3;
+  gs.players.slice(0,gs.numPlayers).forEach((p,i)=>{
+    let px=20+i*(sw+3),act=i===gs.currentTurn;
+    let tk2=TOKENS[p.tokenIdx%TOKENS.length],rl2=ROLES[p.roleIdx%ROLES.length];
+    fill(...tk2.col,act?22:10);stroke(...tk2.col,act?80:28);strokeWeight(act?1.1:0.4);
+    rect(px,58,sw,52,4);noStroke();
+    fill(...tk2.col,220);noStroke();rect(px,58,5,52,3,0,0,3);
+    lbl(p.name,px+14,73,act?[186,133,42,220]:[186,133,42,118],9,LEFT,FD);
+    lbl(gs.scores[i]+' pts',px+14,91,act?[...tk2.col,230]:[...tk2.col,110],11);
+    lbl('Sq '+gs.positions[i]+'  '+rl2.icon,px+sw-8,91,[186,133,42,70],8,RIGHT);
+  });
+
+  // Role instruction
+  fill(10,7,2,148);stroke(...rl.col,28);strokeWeight(0.4);rect(18,118,W-36,28,4);noStroke();
+  lbl(rl.icon+' '+rl.label+': Roll the physical die, then tap ROLL to move your '+tk.label+' token.',
+    26,132,[...rl.col,170],9,LEFT,FD);
+
+  divider(152,[186,133,42,80]);
+
+  // Dice
+  if(gs.rolling){
+    glow([186,133,42],12);
+    fill(14,10,4,218);stroke(186,133,42,75);strokeWeight(1.2);rect(DX-44,DY-44,88,88,8);noStroke();clearGlow();
+    drawDiceFace(DX,DY,floor(gs.anim/3)%6+1,[186,133,42,225]);
+  }else if(gs.diceRoll){
+    let pg=0.5+0.5*sin(gs.anim*0.06);
+    glow([186,133,42],16*pg);
+    fill(14,10,4,218);stroke(186,133,42,130);strokeWeight(1.5);rect(DX-44,DY-44,88,88,8);noStroke();clearGlow();
+    drawDiceFace(DX,DY,gs.diceRoll,[186,133,42,238]);
+    let sq=SQ[min(curPos(),19)],tk2=curToken();
+    lbl('Rolled '+gs.diceRoll+' → Move '+tk2.label+' token to: '+sq.label,
+      DX,DY+62,[186,133,42,175],9.5,CENTER,FD);
+    btn('LOAD CHALLENGE  ▶',DX-102,DY+80,204,36,[22,14,2],[186,133,42,240],12,[186,133,42,100]);
+  }else{
+    fill(12,8,2,185);stroke(186,133,42,40);strokeWeight(0.8);rect(DX-44,DY-44,88,88,8);noStroke();
+    fill(186,133,42,78);textSize(40);textAlign(CENTER,CENTER);text('?',DX,DY+6);
+    btn('ROLL',DX-60,DY+52,120,42,[22,14,2],[186,133,42,242],17,[186,133,42,120]);
+    lbl('SPACE to roll',DX,DY+104,[186,133,42,65],8,CENTER,FD);
+  }
+
+  drawMissionLog(18,H-98,290,90);
+  drawTurnBar();
+}
+
+function drawDiceFace(cx,cy,n,col){
+  const d=[[],[cx,cy],[cx-14,cy-14,cx+14,cy+14],
+    [cx-14,cy-14,cx,cy,cx+14,cy+14],
+    [cx-14,cy-14,cx+14,cy-14,cx-14,cy+14,cx+14,cy+14],
+    [cx-14,cy-14,cx+14,cy-14,cx,cy,cx-14,cy+14,cx+14,cy+14],
+    [cx-14,cy-14,cx+14,cy-14,cx-14,cy,cx+14,cy,cx-14,cy+14,cx+14,cy+14]];
+  fill(...col);noStroke();
+  let pts=d[n]||[];
+  for(let i=0;i<pts.length;i+=2)circle(pts[i],pts[i+1],9);
+}
+
+// ── SCREEN: CHALLENGE ─────────────────────────────────────────────────
+
+function drawChallenge(){
+  let sq=curSq(),th=sqTh(sq.t);
+  if(gs.challengePhase==='picking')drawChallengePicking(sq,th);
+  else drawChallengeActive(sq,th);
+  drawTurnBar();
+}
+
+function drawChallengePicking(sq,th){
+  let ri=RI[sq.t]||RI.trivia;
+  hdr(sq.ic+'  '+sq.label+'  ['+sq.code+']  — Choose Difficulty',[...th.bd]);
+
+  // Location card
+  fill(...th.bg,210);stroke(...th.bd,95);strokeWeight(1);rect(18,58,W-36,52,4);noStroke();
+  fill(...th.bd,22);noStroke();rect(18,58,W-36,18,4,4,0,0);
+  lbl(sq.code+'  ·  '+sq.label,28,67,[...th.bd,210],10,LEFT,FD);
+  lbl(sq.sub,28,83,[...th.bd,150],9);
+
+  // Role strip
+  fill(10,7,2,148);stroke(186,133,42,26);strokeWeight(0.4);rect(18,116,W-36,26,4);noStroke();
+  lbl('📋  '+ri.read+': read card '+sq.code+' aloud  ·  '+ri.judge+': judge  ·  '+ri.award+': award points',
+    26,129,[186,133,42,138],8.5,LEFT,FD);
+
+  // Cache previews
+  if(gs.previewSqId!==sq.id||!gs.levelPreviews){
+    gs.levelPreviews=LEVELS.map(l=>pickQ(sq.t,l.id));
+    gs.previewSqId=sq.id;
+  }
+
+  // 2×2 level card grid
+  LEVELS.forEach((l,i)=>{
+    let col2=i%2,row=floor(i/2);
+    let lx=18+col2*(floor((W-42)/2)+4);
+    let lw=floor((W-42)/2),ly=148+row*256,lh=250;
+    let prev=gs.levelPreviews[i];
+    fill(...l.col.map(v=>v*0.12),218);stroke(...l.col,68);strokeWeight(0.8);rect(lx,ly,lw,lh,5);noStroke();
+    fill(...l.col,198);noStroke();rect(lx,ly,4,lh,5,0,0,5);
+    glow(l.col,9);
+    fill(...l.col,218);textSize(11);textFont(FD);textAlign(LEFT,CENTER);
+    text(l.sym+'  '+l.label,lx+14,ly+19);clearGlow();
+    // Points pill
+    fill(...l.col,158);noStroke();rect(lx+lw-52,ly+8,46,20,10);
+    fill(255,255,255,232);textSize(10);textAlign(CENTER,CENTER);textFont(FB);
+    text('+'+l.pts+' pts',lx+lw-29,ly+18);
+    // Preview Q
+    fill(...th.tc,152);textSize(9.5);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
+    text(prev.q,lx+12,ly+36,lw-20,148);textWrap(CHAR);
+    // Choose button
+    btn('CHOOSE  ▶',lx+lw-104,ly+lh-28,98,22,[...l.col.map(v=>v*0.38)],[255,255,255,228],9,l.col);
+  });
+}
+
+function drawChallengeActive(sq,th){
+  let l=lv(gs.selectedLvl),q=gs.currentQ||{q:'',a:'',hint:'',card:sq.code};
+  let ri=RI[sq.t]||RI.trivia;
+  hdr(sq.ic+'  '+sq.label+'  ['+sq.code+']  ·  '+l.label+' Challenge',[...l.col]);
+
+  // Role strip
+  fill(10,7,2,148);stroke(...l.col,26);strokeWeight(0.4);rect(18,58,W-36,26,4);noStroke();
+  lbl('📋  '+ri.read+': read card '+sq.code+'  ·  '+ri.judge+': judge  ·  '+ri.award+': award points',
+    26,71,[...l.col,172],8.5,LEFT,FD);
+
+  // Question card
+  fill(8,6,2,215);stroke(...l.col,82);strokeWeight(1.2);rect(18,90,W-36,198,5);noStroke();
+  fill(...l.col,18);noStroke();rect(18,90,W-36,30,5,5,0,0);
+  glow(l.col,12);
+  lbl(l.sym+'  '+l.label+'  ·  +'+l.pts+' pts if answered!',28,105,[...l.col,218],10,LEFT,FD);
+  clearGlow();
+  fill(...th.tc,198);textSize(12);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
+  text(q.q,26,128,W-60,148);textWrap(CHAR);
+
+  // Hint
+  if(q.hint&&q.hint.length>0){
+    btn('💡 HINT  (−1 pt)',22,296,148,24,[14,10,4],[180,155,60,192],8.5,[186,133,42,60]);
+  }
+
+  // Timer
+  let tf=gs.timerMax>0?gs.timer/gs.timerMax:1;
+  let ts=ceil(gs.timer/60);
+  let tc=tf>0.4?[48,168,88]:tf>0.2?[190,148,38]:[210,55,38];
+  fill(10,7,2,200);noStroke();rect(18,328,W-36,20,4);
+  if(tf>0){fill(...tc,182);noStroke();rect(18,328,max(4,(W-36)*tf),20,4);}
+  lbl(ts+'s remaining',W/2,338,[215,215,215,185],9,CENTER,FD);
+  if(tf<0.2&&gs.timer%60<30){stroke(...tc,98);strokeWeight(1.2);noFill();rect(18,328,W-36,20,4);noStroke();}
+
+  btn('✓  MARK ANSWERED',W/2-128,360,256,44,l.col.map(v=>v*0.35),[255,255,255,238],13,l.col);
+  btn('✗  Give Up  (0 pts)',W/2-88,414,176,28,[22,10,8],[194,82,48,162],9.5,[194,82,48,62]);
+}
+
+// ── SCREEN: SCORE ─────────────────────────────────────────────────────
+
+function drawScore(){
+  let sq=curSq(),l=lv(gs.selectedLvl??1);
+  let q=gs.currentQ||{q:'',a:'',hint:'',card:sq.code};
+  hdr('⭐  Award Points  ·  '+sq.label+'  ['+sq.code+']',[...l.col]);
+
+  // Answer card
+  fill(6,8,6,215);stroke(48,158,78,88);strokeWeight(1);rect(18,58,W-36,114,5);noStroke();
+  fill(48,158,78,18);noStroke();rect(18,58,W-36,28,5,5,0,0);
+  glow([48,158,78],8);
+  lbl('✓  CORRECT ANSWER',28,72,[88,198,108,218],10,LEFT,FD);clearGlow();
+  fill(185,200,185,185);textSize(10.5);textAlign(LEFT,TOP);textFont(FB);textWrap(WORD);
+  text(q.a||'See physical card '+sq.code,26,90,W-56,72);textWrap(CHAR);
+
+  // Award
+  lbl('AWARD +'+l.pts+' pts to:',20,188,[186,133,42,152],10,LEFT,FD);
+  let slots=gs.numPlayers+1,bw=(W-44)/slots-2;
+  gs.players.slice(0,gs.numPlayers).forEach((p,i)=>{
+    let act=i===gs.currentTurn,tk2=TOKENS[p.tokenIdx%TOKENS.length];
+    let bx=20+i*(bw+2);
+    fill(...tk2.col,act?34:16);stroke(...tk2.col,act?98:38);strokeWeight(act?1.1:0.4);
+    rect(bx,196,bw,58,4);noStroke();
+    fill(...tk2.col,200);noStroke();rect(bx+4,198,6,54,3);
+    lbl(p.name,bx+15,214,act?[186,133,42,218]:[186,133,42,130],9,LEFT,FD);
+    lbl(gs.scores[i]+' → '+(gs.scores[i]+l.pts)+' pts',bx+15,234,[...tk2.col,188],9);
+    btn('+'+l.pts,bx+bw-34,208,28,20,l.col.map(v=>v*0.5),[255,255,255,220],9,l.col);
+  });
+  btn('Nobody\n0 pts',20+gs.numPlayers*(bw+2),196,bw,58,[20,10,10],[194,82,48,148],8,[194,82,48,50]);
+
+  // Score anim
+  if(gs.scoreAnim){
+    let frac=gs.scoreAnim.frame/55,ay=196-frac*72;
+    let bx=20+gs.scoreAnim.player*(bw+2)+bw/2;
+    fill(186,133,42,225*(1-frac));textSize(20);textAlign(CENTER,CENTER);textFont(FD);
+    text('+'+gs.scoreAnim.pts,bx,ay);textFont(FB);
+    gs.scoreAnim.frame++;if(gs.scoreAnim.frame>55)gs.scoreAnim=null;
+  }
+
+  // Scoreboard
+  let sbY=264;
+  fill(8,6,2,162);stroke(186,133,42,32);strokeWeight(0.55);
+  rect(18,sbY,W-36,gs.numPlayers*44+28,4);noStroke();
+  lbl('MISSION SCOREBOARD',28,sbY+14,[186,133,42,138],8,LEFT,FD);
+  gs.players.slice(0,gs.numPlayers).forEach((p,i)=>{
+    let ry=sbY+26+i*44,act=i===gs.currentTurn;
+    let tk2=TOKENS[p.tokenIdx%TOKENS.length],rl2=ROLES[p.roleIdx%ROLES.length];
+    fill(...tk2.col,act?26:11);stroke(...tk2.col,act?68:24);strokeWeight(act?0.9:0.4);
+    rect(26,ry,W-52,38,3);noStroke();
+    fill(...tk2.col,198);noStroke();rect(26,ry,5,38,3,0,0,3);
+    lbl(rl2.icon+' '+p.name,40,ry+12,act?[186,133,42,215]:[186,133,42,122],10,LEFT,FD);
+    lbl('Square '+gs.positions[i],40,ry+28,[...tk2.col,145],8);
+    lbl(gs.scores[i]+' pts',W-30,ry+19,act?[186,133,42,208]:[186,133,42,102],12,RIGHT,FD);
+    if(act){
+      fill(...l.col,148);noStroke();rect(W-105,ry+10,66,18,9);
+      fill(255,255,255,212);textSize(7.5);textAlign(CENTER,CENTER);textFont(FD);
+      text('◀ current',W-72,ry+19);textFont(FB);
+    }
+  });
+
+  btn('NEXT TURN  ▶',W/2-96,H-52,192,40,[22,14,2],[186,133,42,238],13,[186,133,42,100]);
+  drawTurnBar();
+}
+
+// ── SCREEN: WINNER ────────────────────────────────────────────────────
+
+function drawWinner(){
+  let wp=gs.players[gs.winner];
+  let wt=TOKENS[wp.tokenIdx%TOKENS.length];
+  let wr=ROLES[wp.roleIdx%ROLES.length];
+  hdr('🏆  MISSION COMPLETE — Nebula of Knowledge Reached!',[186,133,42]);
+
+  // Confetti
+  noStroke();
+  for(let i=0;i<72;i++){
+    let cx=(sin(i*137.5+gs.anim*0.016)*W/2)+W/2;
+    let cy=(gs.anim*0.4+i*9.8)%H;
+    let cols=[[200,68,68],[68,200,108],[68,108,200],[200,185,55],[158,68,200],[55,185,185]];
+    fill(...cols[i%6],162);rect(cx,cy,7,11,1);
+  }
+
+  textSize(68);textAlign(CENTER,CENTER);text('🏆',W/2,H/2-150);
+
+  let pg=0.6+0.4*sin(gs.anim*0.05);
+  glow([186,133,42],24*pg);
+  fill(186,133,42,238);textSize(22);textStyle(BOLD);textFont(FD);
+  text(wt.label+' token  ·  '+wp.name+'  wins!',W/2,H/2-98);
+  textStyle(NORMAL);clearGlow();
+  fill(48,148,148,152);textSize(10);textFont(FB);
+  text(wr.icon+'  '+wr.label+'  ·  First to reach the Nebula of Knowledge',W/2,H/2-74);
+
+  divider(H/2-56,[186,133,42,80]);
+
+  // Final scores
+  let baseY=H/2-44;
+  fill(10,7,2,172);stroke(186,133,42,52);strokeWeight(0.65);
+  rect(W/2-202,baseY,404,gs.numPlayers*46+32,4);noStroke();
+  lbl('FINAL SCORES',W/2,baseY+14,[186,133,42,142],9,CENTER,FD);
+
+  gs.players.slice(0,gs.numPlayers).forEach((p,i)=>{
+    let ry=baseY+28+i*46,win=i===gs.winner;
+    let tk2=TOKENS[p.tokenIdx%TOKENS.length];
+    fill(...tk2.col,win?34:12);stroke(...tk2.col,win?88:28);strokeWeight(win?1.1:0.4);
+    rect(W/2-192,ry,384,38,3);noStroke();
+    fill(...tk2.col,200);noStroke();rect(W/2-192,ry,5,38,3,0,0,3);
+    lbl((win?'🏆  ':'')+p.name,W/2-182,ry+12,win?[186,133,42,220]:[186,133,42,128],11,LEFT,FD);
+    lbl(gs.scores[i]+' pts',W/2+188,ry+19,win?[186,133,42,218]:[186,133,42,105],13,RIGHT,FD);
+  });
+
+  btn('▶  NEW MISSION',W/2-100,H-66,200,42,[22,14,2],[186,133,42,238],14,[186,133,42,100]);
+  btn('⚙  CHANGE CREW',W/2-100,H-116,200,32,[14,9,3],[48,148,148,182],10,[48,148,148,70]);
+}
+
+// ── NAME INPUTS ───────────────────────────────────────────────────────
+
+function createNameInputs(){
+  for(let i=0;i<6;i++){
+    let inp=createInput(gs.players[i]?.name||'Crew Member '+(i+1));
+    inp.addClass('mct-input');inp.size(188,20);
+    inp.input(function(){if(gs.players[i])gs.players[i].name=this.value();});
+    nameInputs.push(inp);
+  }
+  updateInputVis();
+}
+
+function getCanvasOff(){
+  let el=document.querySelector('canvas');
+  if(!el)return{x:0,y:0};
+  let r=el.getBoundingClientRect();
+  return{x:r.left+window.scrollX,y:r.top+window.scrollY};
+}
+
+function updateInputVis(){
+  let off=getCanvasOff();
+  for(let i=0;i<6;i++){
+    if(!nameInputs[i])continue;
+    if(gs.screen==='setup'&&i<gs.numPlayers){
+      let ry=R0+i*RH;
+      nameInputs[i].position(off.x+318,off.y+ry+14);
+      nameInputs[i].show();
+      if(i<gs.players.length)nameInputs[i].value(gs.players[i].name);
+    }else{nameInputs[i].hide();}
+  }
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────
+
+function setup(){
+  createCanvas(W,H);textFont(FB);
+  buildHexGrid();createNameInputs();
+  gs.hasSave=checkForSave();gs.screen='splash';
+}
+
+function draw(){
+  background(10,7,2);drawHexGrid();gs.anim++;
+
+  if(gs.screen==='challenge'&&gs.challengePhase==='active'&&gs.timerActive&&gs.timer>0){
+    gs.timer--;if(gs.timer<=0){gs.timerActive=false;gs.screen='score';}
+  }
+  if(gs.rolling){
+    gs.rollFrame++;if(gs.rollFrame>22){gs.rolling=false;gs.rollFrame=0;doRoll();}
+  }
+
+  if     (gs.screen==='splash')    drawSplash();
+  else if(gs.screen==='setup')     drawSetup();
+  else if(gs.screen==='roll')      drawRoll();
+  else if(gs.screen==='challenge') drawChallenge();
+  else if(gs.screen==='score')     drawScore();
+  else if(gs.screen==='winner')    drawWinner();
+
+  cursor(getHoverCursor());
+}
+
+// ── MOUSE HANDLERS ────────────────────────────────────────────────────
+
+function mousePressed(){
+  if     (gs.screen==='splash')    handleSplash();
+  else if(gs.screen==='setup')     handleSetup();
+  else if(gs.screen==='roll')      handleRoll();
+  else if(gs.screen==='challenge') handleChallenge();
+  else if(gs.screen==='score')     handleScore();
+  else if(gs.screen==='winner')    handleWinner();
+}
+
+function handleSplash(){
+  if(gs.hasSave){
+    if(isOver(W/2-118,H/2+2,236,44)){if(loadSavedGame())updateInputVis();return;}
+    if(isOver(W/2-84,H/2+58,168,32)){clearSave();gs.screen='setup';updateInputVis();return;}
+    if(isOver(W/2-44,H/2+102,88,22)){clearSave();return;}
+  }else{
+    if(isOver(W/2-112,H/2+2,224,48)){gs.screen='setup';updateInputVis();}
+  }
+}
+
+function handleSetup(){
+  [2,3,4,5,6].forEach((n,i)=>{
+    if(isOver(110+i*56,64,46,28)){
+      gs.numPlayers=n;
+      while(gs.players.length<n)
+        gs.players.push({name:'Crew Member '+(gs.players.length+1),tokenIdx:gs.players.length%6,roleIdx:gs.players.length%5,defaultLevel:1});
+      gs.scores=Array(n).fill(0);gs.positions=Array(n).fill(0);updateInputVis();
+    }
+  });
+  for(let i=0;i<gs.numPlayers;i++){
+    let ry=R0+i*RH,p=gs.players[i];
+    TOKENS.forEach((_,ti)=>{
+      if(isOver(162+ti*22-10,ry+22,20,20)){
+        let inUse=gs.players.slice(0,gs.numPlayers).some((pp,pi)=>pi!==i&&pp.tokenIdx===ti);
+        if(!inUse)p.tokenIdx=ti;
+      }
+    });
+    ROLES.forEach((_,ri)=>{if(isOver(162+ri*28-14,ry+50,28,20))p.roleIdx=ri;});
+    LEVELS.forEach((_,j)=>{if(isOver(520+j*72,ry+12,66,28))p.defaultLevel=j;});
+  }
+  let by=R0+gs.numPlayers*RH+12;
+  if(isOver(W/2-114,by,228,44)){
+    nameInputs.forEach((inp,i)=>{if(i<gs.numPlayers&&inp)gs.players[i].name=inp.value()||('Crew Member '+(i+1));});
+    resetGame();
+  }
+}
+
+function handleRoll(){
+  if(!gs.rolling&&!gs.diceRoll&&isOver(DX-60,DY+52,120,42)){gs.rolling=true;gs.rollFrame=0;}
+  if(!gs.rolling&&gs.diceRoll&&isOver(DX-102,DY+80,204,36)){
+    gs.screen='challenge';gs.selectedLvl=null;gs.challengePhase='picking';
+  }
+}
+
+function handleChallenge(){
+  if(gs.challengePhase==='picking'){
+    LEVELS.forEach((l,i)=>{
+      let col2=i%2,row=floor(i/2);
+      let lx=18+col2*(floor((W-42)/2)+4),lw=floor((W-42)/2);
+      let ly=148+row*256,lh=250;
+      if(isOver(lx,ly,lw,lh)){
+        gs.selectedLvl=l.id;gs.currentQ=pickQ(curSq().t,l.id);
+        gs.challengePhase='active';gs.timer=TIMER_F[l.id];gs.timerMax=TIMER_F[l.id];gs.timerActive=true;
+        addLog('📋 Challenge: '+l.label+' — '+curSq().code);
+      }
+    });
+  }else{
+    if(isOver(W/2-128,360,256,44)){gs.timerActive=false;gs.screen='score';}
+    if(isOver(W/2-88,414,176,28)){gs.timerActive=false;awardPoints(gs.currentTurn,0);}
+  }
+}
+
+function handleScore(){
+  let l=lv(gs.selectedLvl??1),bw=(W-44)/(gs.numPlayers+1)-2;
+  gs.players.slice(0,gs.numPlayers).forEach((_,i)=>{
+    if(isOver(20+i*(bw+2),196,bw,58))awardPoints(i,l.pts);
+  });
+  if(isOver(20+gs.numPlayers*(bw+2),196,bw,58))awardPoints(gs.currentTurn,0);
+  if(isOver(W/2-96,H-52,192,40))nextTurn();
+}
+
+function handleWinner(){
+  if(isOver(W/2-100,H-66,200,42))resetGame();
+  if(isOver(W/2-100,H-116,200,32)){gs.screen='setup';updateInputVis();}
+}
+
+// ── KEYBOARD ─────────────────────────────────────────────────────────
+
+function keyPressed(){
+  if(gs.screen==='roll'){
+    if(key===' '||keyCode===ENTER){
+      if(!gs.rolling&&!gs.diceRoll){gs.rolling=true;gs.rollFrame=0;}
+      else if(!gs.rolling&&gs.diceRoll){gs.screen='challenge';gs.selectedLvl=null;gs.challengePhase='picking';}
+    }
+  }
+  if(gs.screen==='challenge'&&gs.challengePhase==='picking'){
+    if(['1','2','3','4'].includes(key)){
+      let li=int(key)-1;
+      gs.selectedLvl=li;gs.currentQ=pickQ(curSq().t,li);
+      gs.challengePhase='active';gs.timer=TIMER_F[li];gs.timerMax=TIMER_F[li];gs.timerActive=true;
+    }
+  }
+  if(gs.screen==='score'){
+    if(keyCode===ENTER)nextTurn();
+    let l=lv(gs.selectedLvl??1);
+    for(let i=0;i<gs.numPlayers;i++)if(key===''+(i+1))awardPoints(i,l.pts);
+    if(key==='0')awardPoints(gs.currentTurn,0);
+  }
+  if(gs.screen==='winner'){
+    if(key==='r'||key==='R')resetGame();
+    if(keyCode===ESCAPE){gs.screen='setup';updateInputVis();}
+  }
+  if(key===' ')return false;
+}
+
+// ── HOVER CURSOR ──────────────────────────────────────────────────────
+
+function getHoverCursor(){
+  let c=ARROW;
+  if(gs.screen==='splash'){
+    if(gs.hasSave){
+      if(isOver(W/2-118,H/2+2,236,44)||isOver(W/2-84,H/2+58,168,32)||isOver(W/2-44,H/2+102,88,22))c=HAND;
+    }else{if(isOver(W/2-112,H/2+2,224,48))c=HAND;}
+  }
+  if(gs.screen==='setup'){
+    [2,3,4,5,6].forEach((_,i)=>{if(isOver(110+i*56,64,46,28))c=HAND;});
+    if(isOver(W/2-114,R0+gs.numPlayers*RH+12,228,44))c=HAND;
+    for(let i=0;i<gs.numPlayers;i++){
+      let ry=R0+i*RH;
+      TOKENS.forEach((_,ti)=>{if(isOver(162+ti*22-10,ry+22,20,20))c=HAND;});
+      ROLES.forEach((_,ri)=>{if(isOver(162+ri*28-14,ry+50,28,20))c=HAND;});
+      LEVELS.forEach((_,j)=>{if(isOver(520+j*72,ry+12,66,28))c=HAND;});
+    }
+  }
+  if(gs.screen==='roll'){
+    if(!gs.rolling&&!gs.diceRoll&&isOver(DX-60,DY+52,120,42))c=HAND;
+    if(!gs.rolling&&gs.diceRoll&&isOver(DX-102,DY+80,204,36))c=HAND;
+  }
+  if(gs.screen==='challenge'){
+    if(gs.challengePhase==='picking'){
+      LEVELS.forEach((_,i)=>{
+        let col2=i%2,row=floor(i/2);
+        let lx=18+col2*(floor((W-42)/2)+4),lw=floor((W-42)/2);
+        if(isOver(lx,148+row*256,lw,250))c=HAND;
+      });
+    }else{
+      if(isOver(W/2-128,360,256,44)||isOver(W/2-88,414,176,28))c=HAND;
+    }
+  }
+  if(gs.screen==='score'){
+    let bw=(W-44)/(gs.numPlayers+1)-2;
+    for(let i=0;i<=gs.numPlayers;i++)if(isOver(20+i*(bw+2),196,bw,58))c=HAND;
+    if(isOver(W/2-96,H-52,192,40))c=HAND;
+  }
+  if(gs.screen==='winner'){
+    if(isOver(W/2-100,H-66,200,42)||isOver(W/2-100,H-116,200,32))c=HAND;
+  }
+  return c;
+}
+</script>
+</body>
+</html>
