@@ -30,7 +30,7 @@ The JavaScript code (relevant logic in tags within `<script>`) defines all game 
 #### 1. **Global Constants**
 - **Screen Dimensions and Fonts**: `const W=820`, `H=700`, and fonts `FD='Cinzel', FB='Courier Prime'`.
 - **Roles & Tokens**:
-  - Each role (e.g., Captain 🚀, Navigator 🗺️) has unique colors and icons.
+  - Each role (e.g., Captain , Navigator ) has unique colors and icons.
   - Tokens (e.g., Red, Green, Gold) represent players' physical game pieces.
 
 ---
