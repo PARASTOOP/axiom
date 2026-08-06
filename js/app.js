@@ -58,24 +58,36 @@ function esc(str) {
 // Rendering entry point
 // ---------------------------------------------------------------------
 function render() {
-  const state = s();
-  let html = '';
-  switch (state.currentJourneyStep) {
-    case 'launch': html = screenLaunch(); break;
-    case 'welcome': html = screenWelcome(); break;
-    case 'start-or-continue': html = screenStartOrContinue(); break;
-    case 'nickname': html = screenNickname(); break;
-    case 'home': html = screenHome(); break;
-    case 'deck-select': html = screenDeckSelect(); break;
-    case 'mission-select': html = screenMissionSelect(); break;
-    case 'mission-flow': html = screenMissionFlow(); break;
-    case 'journal-view': html = screenJournal(); break;
-    case 'settings': html = screenSettings(); break;
-    case 'epilogue': html = screenEpilogue(); break;
-    default: html = screenHome();
+  // A loop, not recursion: a screen can require a redirect (e.g. mission-flow
+  // with no missionRuntime) by updating state and leaving `html` unset: we
+  // just re-switch rather than nesting another render() call mid-render,
+  // which would otherwise blank the page (outer call overwrites innerHTML
+  // right after the inner call already painted it).
+  for (let guard = 0; guard < 5; guard++) {
+    const state = s();
+    let html;
+    switch (state.currentJourneyStep) {
+      case 'launch': html = screenLaunch(); break;
+      case 'welcome': html = screenWelcome(); break;
+      case 'start-or-continue': html = screenStartOrContinue(); break;
+      case 'nickname': html = screenNickname(); break;
+      case 'home': html = screenHome(); break;
+      case 'deck-select': html = screenDeckSelect(); break;
+      case 'mission-select':
+        if (!getDeck(state.currentSelection.deckId)) { store.update(st => { st.currentJourneyStep = 'deck-select'; }); continue; }
+        html = screenMissionSelect(); break;
+      case 'mission-flow':
+        if (!state.missionRuntime) { store.update(st => { st.currentJourneyStep = 'home'; }); continue; }
+        html = screenMissionFlow(); break;
+      case 'journal-view': html = screenJournal(); break;
+      case 'settings': html = screenSettings(); break;
+      case 'epilogue': html = screenEpilogue(); break;
+      default: html = screenHome();
+    }
+    app.innerHTML = html + footerHtml();
+    focusFirstControl(app);
+    return;
   }
-  app.innerHTML = html + footerHtml();
-  focusFirstControl(app);
 }
 
 function footerHtml() {
@@ -96,12 +108,14 @@ function characterLine(characterId, text, contextTag) {
 
 function narrationBar(text) {
   const prefs = s().preferences;
+  const disabled = !prefs.narrationEnabled || !narrator.supported;
   return `<div class="row" style="margin:8px 0" aria-live="polite">
-    <button data-action="narrate" data-arg="${encodeURIComponent(text)}" ${!prefs.narrationEnabled ? 'disabled' : ''}>▶ play narration</button>
+    <button data-action="narrate" data-arg="${encodeURIComponent(text)}" ${disabled ? 'disabled' : ''}>▶ play narration</button>
     <button data-action="narrate-pause">pause</button>
     <button data-action="narrate-resume">resume</button>
     <button data-action="narrate-stop">stop</button>
     ${!prefs.narrationEnabled ? '<span class="badge">narration off — transcript only</span>' : ''}
+    ${prefs.narrationEnabled && !narrator.supported ? '<span class="badge">narration unsupported in this browser — transcript only</span>' : ''}
   </div>`;
 }
 function renderNarrationControls() { /* narration state changes are transient; no persistent UI to sync beyond buttons already present */ }
@@ -228,7 +242,6 @@ function screenDeckSelect() {
 function screenMissionSelect() {
   const state = s();
   const deck = getDeck(state.currentSelection.deckId);
-  if (!deck) { go('deck-select'); return ''; }
   const items = deck.missions.map(mission => {
     const unlocked = state.unlockedMissions.includes(mission.id);
     const done = state.completedMissions.includes(mission.id);
@@ -258,7 +271,6 @@ function screenMissionSelect() {
 // ---------------------------------------------------------------------
 function screenMissionFlow() {
   const runtime = mr();
-  if (!runtime) { go('home'); return ''; }
   const mission = getMission(runtime.missionId);
   const stepIndex = MISSION_STEPS.indexOf(runtime.step);
   const body = {
@@ -570,6 +582,10 @@ function go(step) {
 function onClick(e) {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
+  // Text/number inputs commit their value on "change" (blur), not on the
+  // click that focuses them — otherwise the first click re-renders the
+  // screen with an empty value and yanks focus away before typing.
+  if (btn.tagName === 'INPUT' && (btn.type === 'text' || btn.type === 'number')) return;
   const action = btn.dataset.action;
   const arg = btn.dataset.arg;
   dispatch(action, arg, btn);
@@ -711,6 +727,7 @@ function completeMission() {
     }
     if (mission.unlocksEpilogue) {
       state.epilogueUnlocked = true;
+      state.freeExplorationUnlocked = true;
       const labState = state.missionRuntime && state.missionRuntime.labState;
       if (labState && labState.workingData && labState.workingData.selected) {
         state.standingGuidance = labState.workingData.selected;

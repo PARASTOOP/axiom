@@ -331,7 +331,7 @@ export function runLab(labState) {
       break;
     }
     case 'rule-review': {
-      const success = labConfig.existingRules.every(r => workingData.decisions[r.id] && workingData.decisions[r.id].reason && workingData.decisions[r.id].reason.trim().length > 0);
+      const success = labConfig.existingRules.every(r => workingData.decisions[r.id] && workingData.decisions[r.id].decision && workingData.decisions[r.id].reason && workingData.decisions[r.id].reason.trim().length > 0);
       result = { success, detail: success ? 'Every rule has been reviewed with a reason recorded.' : 'Every rule needs a decision and a short reason.' };
       break;
     }

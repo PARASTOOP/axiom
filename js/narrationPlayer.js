@@ -6,10 +6,12 @@ export class NarrationPlayer {
   constructor({ getPreferences }) {
     this.getPreferences = getPreferences;
     this.utterance = null;
-    this.state = 'idle'; // idle | playing | paused | stopped | unsupported
+    // Capability is fixed at construction and never overwritten by playback
+    // state — 'state' below only ever cycles through idle/playing/paused.
+    this.supported = 'speechSynthesis' in window;
+    this.state = 'idle'; // idle | playing | paused
     this.currentText = '';
     this.onStateChange = null;
-    if (!('speechSynthesis' in window)) this.state = 'unsupported';
   }
 
   _emit() {
@@ -20,7 +22,7 @@ export class NarrationPlayer {
     this.stop();
     const prefs = this.getPreferences();
     this.currentText = text;
-    if (!prefs.narrationEnabled || this.state === 'unsupported') {
+    if (!this.supported || !prefs.narrationEnabled) {
       this.state = 'idle';
       this._emit();
       return;
@@ -37,14 +39,14 @@ export class NarrationPlayer {
   }
 
   pause() {
-    if (this.state !== 'playing' || this.state === 'unsupported') return;
+    if (!this.supported || this.state !== 'playing') return;
     window.speechSynthesis.pause();
     this.state = 'paused';
     this._emit();
   }
 
   resume() {
-    if (this.state !== 'paused') return;
+    if (!this.supported || this.state !== 'paused') return;
     window.speechSynthesis.resume();
     this.state = 'playing';
     this._emit();
@@ -55,7 +57,10 @@ export class NarrationPlayer {
   }
 
   stop() {
-    if (this.state === 'unsupported') return;
+    if (!this.supported) {
+      this.state = 'idle';
+      return;
+    }
     window.speechSynthesis.cancel();
     this.state = 'idle';
     this._emit();

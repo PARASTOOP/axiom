@@ -43,7 +43,10 @@ export const Journal = {
       const existingIndex = state.codingProjects.findIndex(p => p.projectId === projectId);
       const record = {
         projectId, labId, missionId, title,
-        creationData, previewImage: previewImage || null,
+        // Snapshot, not a live reference — the lab keeps mutating
+        // workingData after a save (Create stage stays editable).
+        creationData: JSON.parse(JSON.stringify(creationData)),
+        previewImage: previewImage || null,
         saveDate: new Date().toISOString(),
         appVersion, contentVersion
       };

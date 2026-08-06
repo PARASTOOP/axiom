@@ -206,7 +206,7 @@ export function handleLabInteraction(labState, action, arg, form) {
       });
       return;
     case 'lab-set-threshold':
-      applyAction(labState, wd => { wd.threshold = Number(arg); });
+      applyAction(labState, wd => { wd.threshold = Number(form.value); });
       return;
     case 'lab-add-balance':
       applyAction(labState, wd => {
@@ -228,7 +228,12 @@ export function handleLabInteraction(labState, action, arg, form) {
       applyAction(labState, wd => { if (!wd.chain.includes(labConfig.lockedBlock)) wd.chain.push(labConfig.lockedBlock); });
       return;
     case 'lab-remove-last-block':
-      applyAction(labState, wd => wd.chain.pop());
+      applyAction(labState, wd => {
+        // The Human Confirmation block, once added, can never be removed —
+        // in any mode — so a completed chain can never end up unconfirmed.
+        if (wd.chain.length && wd.chain[wd.chain.length - 1] === labConfig.lockedBlock) return;
+        wd.chain.pop();
+      });
       return;
     case 'lab-toggle-limit':
       applyAction(labState, wd => {
