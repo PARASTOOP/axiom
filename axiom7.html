@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AXIOM-7</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<!-- System-font fallbacks keep text available when the network is unavailable. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0a0a1e; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
-  canvas { display: block; }
+  body { background: #0a0a1e; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: auto; }
+  canvas { display: block; width: min(100vw, calc(100vh * 700 / 650)); height: auto !important; max-width: 700px; touch-action: manipulation; }
   #name-inputs { position: absolute; pointer-events: none; top: 0; left: 0; }
   #name-inputs input {
     position: absolute;
@@ -19,7 +18,7 @@
     border: none;
     border-bottom: 1px solid #3a5a8a;
     color: #8cb4dc;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
     outline: none;
     padding: 2px 4px;
@@ -34,7 +33,7 @@
     background: rgba(5,10,30,0.92);
     border-left: 1px solid #1e3a5a;
     padding: 10px 8px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 10px;
     color: #8cb4dc;
     display: none;
@@ -44,18 +43,18 @@
     z-index: 10;
   }
   #facilitator-panel.visible { display: flex; }
-  #facilitator-panel h3 { font-family: 'Orbitron', monospace; font-size: 9px; color: #55aaff; letter-spacing: 1px; }
+  #facilitator-panel h3 { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 9px; color: #55aaff; letter-spacing: 1px; }
   #facilitator-panel .fq { background: #0d1f35; padding: 6px; border-radius: 4px; line-height: 1.4; }
   #facilitator-panel .fa { background: #0d2d1a; padding: 6px; border-radius: 4px; line-height: 1.4; color: #55dd88; }
   #facilitator-panel button {
     background: #1a2a4a; border: 1px solid #2a4a7a; color: #8cb4dc;
-    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px;
     padding: 4px 6px; border-radius: 3px; cursor: pointer; text-align: left;
   }
   #facilitator-panel button:hover { background: #2a3a6a; }
   #facilitator-panel input[type=number] {
     background: #0d1f35; border: 1px solid #2a4a7a; color: #8cb4dc;
-    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px;
     padding: 3px; width: 40px; border-radius: 3px;
   }
   #fac-toggle {
@@ -146,26 +145,20 @@ const LEVEL_COLS = {
 
 const TIMER_DEFAULT = { starter:90, beginner:75, intermediate:60, advanced:45 };
 
-// Board layout: 20 squares in a snake path
-// Row 0 (bottom): sq 0-4 left→right  y=row2
-// Row 1 (middle): sq 5-9 right→left  y=row1
-// Row 2 (top):    sq 10-14 left→right y=row0
-// Column (right): sq 15-19 top→bottom x=col4
+// Board layout: four non-overlapping rows of five squares in a snake path.
 const BOARD_MARGIN = 30;
 const SQ_W = 110, SQ_H = 90;
+const BOARD_ROW_GAP = 25;
 function getBoardPos(i) {
-  const cols = 5;
-  const row0y = BOARD_MARGIN + 20;
-  const row1y = row0y + SQ_H + 20;
-  const row2y = row1y + SQ_H + 20;
-  const col0x = BOARD_MARGIN;
+  const safeIndex = Math.max(0, Math.min(NUM_SQUARES - 1, i));
+  const row = Math.floor(safeIndex / 5);
+  const offset = safeIndex % 5;
+  const col = row % 2 === 0 ? offset : 4 - offset;
   const colStep = (W - BOARD_MARGIN*2 - SQ_W) / 4;
-
-  if (i <= 4)       return { x: col0x + i * colStep,           y: row2y };
-  if (i <= 9)       return { x: col0x + (9-i) * colStep,       y: row1y };
-  if (i <= 14)      return { x: col0x + (i-10) * colStep,      y: row0y };
-  // sq 15-19: right column, top to bottom
-  return { x: col0x + 4 * colStep, y: row0y + (i-15) * (SQ_H + 20) };
+  return {
+    x: BOARD_MARGIN + col * colStep,
+    y: BOARD_MARGIN + 20 + row * (SQ_H + BOARD_ROW_GAP)
+  };
 }
 
 // ── QUESTION BANK ────────────────────────────────────────────────────────────
@@ -319,12 +312,10 @@ const QUESTION_BANK = {
   }
 };
 
+// Only expose events with complete, deterministic interaction flows.
 const WILD_EVENTS = [
-  { name:'BONUS ROUND',      emoji:'🎁', text:'Everyone shout an AI product name! Each correct answer = 1 pt.', type:'bonus' },
-  { name:'WORMHOLE',         emoji:'🌀', text:'Choose a player to swap board positions with!',                 type:'swap' },
-  { name:'HEIST',            emoji:'💰', text:'Steal 1 point from any player of your choice!',                type:'steal' },
-  { name:'GALAXY CHALLENGE', emoji:'🌌', text:'All players compete! Best answer wins the points.',            type:'all' },
-  { name:'TIME WARP',        emoji:'⏰', text:'Roll again! Move backwards by that amount.',                   type:'back' }
+  { name:'WORMHOLE', emoji:'🌀', text:'Choose a player to swap board positions with!', type:'swap' },
+  { name:'HEIST',    emoji:'💰', text:'Steal 1 point from any player of your choice!', type:'steal' }
 ];
 
 const CHARACTER_CARDS = {
@@ -388,7 +379,6 @@ function defaultState() {
     speechTimer: 0,
     scoreAnimPts: [],
     confetti: [],
-    facTarget: 0,
     savedExists: false
   };
 }
@@ -412,26 +402,53 @@ function initStarfield(p) {
 }
 
 // ── SAVE / LOAD ───────────────────────────────────────────────────────────────
+const SAVE_VERSION = 1;
+function isValidSave(save) {
+  return !!save &&
+    save.version === SAVE_VERSION &&
+    Number.isInteger(save.numPlayers) && save.numPlayers >= 2 && save.numPlayers <= 6 &&
+    Array.isArray(save.players) && save.players.length >= save.numPlayers &&
+    save.players.slice(0, save.numPlayers).every(pl =>
+      pl && typeof pl.name === 'string' && typeof pl.emoji === 'string' &&
+      Number.isInteger(pl.pos) && pl.pos >= 0 && pl.pos < NUM_SQUARES &&
+      Number.isFinite(pl.score) && typeof pl.defaultLvl === 'string'
+    ) &&
+    Number.isInteger(save.currentPlayer) && save.currentPlayer >= 0 && save.currentPlayer < save.numPlayers &&
+    Number.isInteger(save.currentTurn) && save.currentTurn >= 1 &&
+    Array.isArray(save.log);
+}
+
 function saveGame() {
   try {
     const save = {
+      version: SAVE_VERSION,
       numPlayers: gs.numPlayers,
       players: gs.players,
       currentPlayer: gs.currentPlayer,
       currentTurn: gs.currentTurn,
-      log: gs.log,
-      screen: gs.screen === 'splash' ? 'roll' : gs.screen
+      log: gs.log
     };
     localStorage.setItem('axiom7_save', JSON.stringify(save));
-  } catch(e) {}
+    gs.savedExists = true;
+  } catch(e) {
+    console.warn('AXIOM-7 could not save this game.', e);
+  }
 }
 
 function loadSave() {
   try {
     const raw = localStorage.getItem('axiom7_save');
     if (!raw) return null;
-    return JSON.parse(raw);
-  } catch(e) { return null; }
+    const save = JSON.parse(raw);
+    if (!isValidSave(save)) {
+      localStorage.removeItem('axiom7_save');
+      return null;
+    }
+    return save;
+  } catch(e) {
+    localStorage.removeItem('axiom7_save');
+    return null;
+  }
 }
 
 function clearSave() {
@@ -481,6 +498,7 @@ function doRoll(p) {
   gs.animStep = 0;
   gs.animating = true;
   gs.animFrame = 0;
+  saveGame();
 }
 
 function tickAnim() {
@@ -518,11 +536,13 @@ function afterMove() {
     gs.screen = 'wild';
     gs.wildSwapTarget = -1;
     gs.wildStealTarget = -1;
+    saveGame();
     return;
   }
   loadChallenge();
   gs.screen = 'challenge';
   setSpeech('challenge', gs.players[gs.currentPlayer].defaultLvl);
+  saveGame();
 }
 
 function loadChallenge() {
@@ -563,11 +583,36 @@ function tickTimer() {
 
 function goToScore() {
   gs.screen = 'score';
+  gs.challengeStarted = false;
   gs.awardPending = true;
   gs.awardedTo = -1;
   gs.awardConfirmed = false;
   setSpeech('score', gs.currentQ?.a || '');
   updateFacPanel();
+  saveGame();
+}
+
+function getAwardPoints() {
+  const lvl = LEVELS.find(l => l.id === (gs.selectedLvl || 'beginner')) || LEVELS[1];
+  return Math.max(0, lvl.pts - (gs.hintUsed ? 1 : 0));
+}
+
+function skipAward() {
+  if (gs.awardConfirmed) return;
+  gs.awardedTo = -1;
+  gs.awardedPts = 0;
+  gs.awardConfirmed = true;
+  gs.awardPending = false;
+  gs.log.push({
+    turn: gs.currentTurn,
+    player: gs.players[gs.currentPlayer].name,
+    square: SQ_LABELS[gs.players[gs.currentPlayer].pos],
+    level: gs.selectedLvl,
+    pts: 0,
+    awardedTo: '—',
+    ts: new Date().toLocaleTimeString()
+  });
+  saveGame();
 }
 
 function awardPoints(playerIdx, pts) {
@@ -689,7 +734,10 @@ function updateFacPanel() {
 function facAward(pts) { if (gs.screen==='score'||gs.screen==='challenge') awardPoints(facTarget, pts); }
 function facMovePlayer() {
   const sq = parseInt(document.getElementById('fac-sq')?.value || '0');
-  if (sq >= 0 && sq < NUM_SQUARES) gs.players[gs.currentPlayer].pos = sq;
+  if (sq >= 0 && sq < NUM_SQUARES) {
+    gs.players[gs.currentPlayer].pos = sq;
+    saveGame();
+  }
 }
 function facNextTurn() { nextTurn(); }
 
@@ -761,6 +809,23 @@ function clearNameInputs() {
   nameInputEls = [];
 }
 
+function repositionNameInputs() {
+  if (gs.screen !== 'setup' || !nameInputEls.length) return;
+  const canvasEl = document.querySelector('canvas');
+  if (!canvasEl) return;
+  const rect = canvasEl.getBoundingClientRect();
+  const scale = rect.width / W;
+  nameInputEls.forEach((input, i) => {
+    const ry = 190 + i * 50;
+    input.style.left = (rect.left + 90 * scale) + 'px';
+    input.style.top = (rect.top + (ry + 10) * scale) + 'px';
+    input.style.width = (160 * scale) + 'px';
+    input.style.height = (26 * scale) + 'px';
+    input.style.fontSize = Math.max(11, 11 * scale) + 'px';
+  });
+}
+window.addEventListener('resize', repositionNameInputs);
+
 function collectNameInputs() {
   nameInputEls.forEach((el, i) => {
     gs.players[i].name = el.value.trim() || `Player ${i+1}`;
@@ -831,7 +896,7 @@ function drawButton(p, x, y, w, h, label, col, hovered, pressed) {
   p.noStroke();
   p.textAlign(p.CENTER, p.CENTER);
   p.textSize(10);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.text(label, x+w/2, y+h/2);
 }
 
@@ -846,7 +911,7 @@ function drawTopBar(p) {
   p.fill(180,210,255);
   p.textAlign(p.LEFT, p.CENTER);
   p.textSize(9);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.text(`${cp.emoji} ${cp.name}   TURN ${gs.currentTurn}`, 10, 11);
   p.textAlign(p.RIGHT, p.CENTER);
   p.text(`SQ ${cp.pos+1}/20`, W-10, 11);
@@ -867,7 +932,7 @@ function drawScoreBar(p) {
     p.noStroke();
     p.fill(col);
     p.textAlign(p.CENTER, p.TOP);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(8);
     p.text(`${pl.emoji} ${pl.name.substring(0,7)}`, x+sw/2-2, y+3);
     p.textSize(11);
@@ -882,13 +947,13 @@ function drawBoardMiniCompact(p, cx, cy, cw, ch) {
   p.strokeWeight(1);
   p.rect(cx, cy, cw, ch, 4);
 
-  const cols = 5, rows = 3;
+  const cols = 5, rows = 4;
   const sqW = (cw-14)/cols, sqH = (ch-14)/rows;
 
   for (let i = 0; i < NUM_SQUARES; i++) {
     const pos = getBoardPos(i);
     const bx = cx + 7 + (pos.x - BOARD_MARGIN) / (W - BOARD_MARGIN*2 - SQ_W) * (cw-14-sqW);
-    const by = cy + 7 + (pos.y - BOARD_MARGIN - 20) / (SQ_H*2 + 40) * (ch-14-sqH);
+    const by = cy + 7 + (pos.y - BOARD_MARGIN - 20) / (3 * (SQ_H + BOARD_ROW_GAP)) * (ch-14-sqH);
     const type = SQ_TYPES[i];
     const col = SQ_COLS[type] || [80,80,80];
 
@@ -926,7 +991,7 @@ function drawSpeechBubble(p) {
 
   p.fill(200,220,255,gs.speechAlpha);
   p.noStroke();
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(9);
   p.textAlign(p.LEFT, p.TOP);
   p.textWrap(p.WORD);
@@ -936,7 +1001,7 @@ function drawSpeechBubble(p) {
 function drawScoreAnims(p) {
   for (const a of gs.scoreAnimPts) {
     p.fill(a.col || '#fff');
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(16);
     p.textAlign(p.CENTER);
     p.fill(255,255,100,a.alpha);
@@ -958,7 +1023,7 @@ function drawKeyHints(p, hints) {
   const totalW = hints.reduce((a,h)=>a+p.textWidth(h)+14,0);
   let hx = W/2 - totalW/2;
   const hy = H-50;
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(8);
   for (const h of hints) {
     const hw = p.textWidth(h)+14;
@@ -1013,7 +1078,7 @@ function drawBoardFull(p) {
     // Square number
     p.fill(col[0],col[1],col[2],180);
     p.noStroke();
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(7);
     p.textAlign(p.LEFT, p.TOP);
     p.text(i+1, pos.x+4, pos.y+3);
@@ -1026,7 +1091,7 @@ function drawBoardFull(p) {
     // Label
     p.fill(200,220,255, isActive?255:160);
     p.textSize(6.5);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textAlign(p.CENTER, p.BOTTOM);
     const lbl = SQ_LABELS[i].length > 14 ? SQ_LABELS[i].substring(0,13)+'…' : SQ_LABELS[i];
     p.text(lbl, pos.x+SQ_W/2, pos.y+SQ_H-4);
@@ -1078,13 +1143,13 @@ function drawCharCard(p, type) {
   p.text(card.emoji, x+28, y+30);
   // Name
   p.fill(col[0],col[1],col[2]);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(8);
   p.textAlign(p.LEFT, p.TOP);
   p.text(card.name, x+52, y+8);
   // Role
   p.fill(160,190,220);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(7);
   p.text(card.role, x+52, y+20, w-58, 30);
   // Personality pill
@@ -1092,13 +1157,13 @@ function drawCharCard(p, type) {
   p.noStroke();
   p.rect(x+8, y+52, p.textWidth(card.personality)+10, 13, 6);
   p.fill(col[0],col[1],col[2]);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(7);
   p.textAlign(p.LEFT,p.CENTER);
   p.text(card.personality, x+13, y+58);
   // Catchphrase
   p.fill(180,200,230,200);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(7);
   p.textStyle(p.ITALIC);
   p.text(card.catchphrase, x+8, y+72, w-14, 36);
@@ -1111,7 +1176,7 @@ function drawSplash(p) {
   p.drawingContext.shadowBlur = 30;
   p.drawingContext.shadowColor = 'rgba(80,140,255,0.8)';
   p.fill(100,160,255);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(42);
   p.textAlign(p.CENTER, p.CENTER);
   p.text('AXIOM-7', W/2, H/2-80);
@@ -1138,7 +1203,7 @@ function drawSplash(p) {
     const save = loadSave();
     if (save) {
       p.fill(100,150,200,180);
-      p.textFont('Share Tech Mono');
+      p.textFont("monospace");
       p.textSize(8);
       p.textAlign(p.CENTER);
       const names = save.players.slice(0,save.numPlayers).map(pl=>pl.emoji+pl.name).join(' ');
@@ -1147,7 +1212,7 @@ function drawSplash(p) {
   }
 
   p.fill(60,100,140);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(7);
   p.textAlign(p.CENTER, p.BOTTOM);
   p.text('A board game for 2–6 players • AI/CS learning for ages 10–16', W/2, H-14);
@@ -1158,7 +1223,7 @@ function drawSetup(p) {
   drawGlowRect(p, 20, 24, W-40, H-48, 8, [55,100,200], 0);
 
   p.fill(120,180,255);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(14);
   p.textAlign(p.CENTER, p.TOP);
   p.drawingContext.shadowBlur=10;
@@ -1168,7 +1233,7 @@ function drawSetup(p) {
 
   // Player count
   p.fill(160,200,255);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(9);
   p.textAlign(p.LEFT, p.CENTER);
   p.text('CREW SIZE:', 40, 85);
@@ -1217,7 +1282,7 @@ function drawSetup(p) {
 
     // Default level picker
     p.fill(140,170,200);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(7);
     p.textAlign(p.LEFT,p.CENTER);
     p.text('DEFAULT LVL:', 270, ry+14);
@@ -1242,7 +1307,7 @@ function drawSetup(p) {
   }
 
   p.fill(80,120,180,150);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(8);
   p.textAlign(p.CENTER,p.BOTTOM);
   p.text('Click player emoji to select • Type name in box • Set default difficulty per player', W/2, H-10);
@@ -1263,7 +1328,7 @@ function drawRoll(p) {
   p.drawingContext.shadowBlur=16;
   p.drawingContext.shadowColor=`rgba(${col[0]},${col[1]},${col[2]},0.7)`;
   p.fill(col[0],col[1],col[2]);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(20);
   p.textAlign(p.CENTER,p.TOP);
   p.text(`${cp.emoji} ${cp.name}'s Turn`, W/2-80, 35);
@@ -1286,7 +1351,7 @@ function drawRoll(p) {
     p.drawingContext.shadowBlur=0;
     p.noStroke();
     p.fill(200,220,255);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(11);
     p.textAlign(p.CENTER,p.CENTER);
     p.text('ROLL', dx, dy-10);
@@ -1295,7 +1360,7 @@ function drawRoll(p) {
     p.text('PRESS SPACE', dx, dy+10);
   } else if (gs.animating) {
     p.fill(255,220,100);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(40);
     p.textAlign(p.CENTER,p.CENTER);
     p.text(gs.diceVal, dx, dy-5);
@@ -1304,7 +1369,7 @@ function drawRoll(p) {
     p.text('MOVING…', dx, dy+34);
   } else {
     p.fill(255,220,100);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(40);
     p.textAlign(p.CENTER,p.CENTER);
     p.text(gs.diceVal, dx, dy-5);
@@ -1329,17 +1394,14 @@ function drawChallenge(p) {
   const type = SQ_TYPES[cp.pos];
   const col = SQ_COLS[type] || [55,138,221];
 
-  // Board mini
-  drawBoardMiniCompact(p, W-170, 28, 160, 110);
-
-  // Character card
+  // Character card (the mini-board is omitted here to avoid covering this card).
   drawCharCard(p, type);
 
   // Square header
   p.drawingContext.shadowBlur=12;
   p.drawingContext.shadowColor=`rgba(${col[0]},${col[1]},${col[2]},0.7)`;
   p.fill(col[0],col[1],col[2]);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(13);
   p.textAlign(p.LEFT,p.TOP);
   p.text(`${SQ_CREW[cp.pos]} ${SQ_LABELS[cp.pos]}`, 14, 30);
@@ -1371,7 +1433,7 @@ function drawChallenge(p) {
 
   if (gs.currentQ) {
     p.fill(220,235,255);
-    p.textFont('Share Tech Mono');
+    p.textFont("monospace");
     p.textSize(11);
     p.textAlign(p.LEFT,p.TOP);
     p.textWrap(p.WORD);
@@ -1397,7 +1459,7 @@ function drawChallenge(p) {
     p.fill(tcol[0],tcol[1],tcol[2]);
     p.rect(14,qy+qh+10,barW*frac,16,4);
     p.fill(255);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(9);
     p.textAlign(p.CENTER,p.CENTER);
     p.text(`${Math.ceil(gs.timerRemain)}s`, W/2, qy+qh+18);
@@ -1409,7 +1471,7 @@ function drawChallenge(p) {
     drawButton(p,14,qy+qh+38,140,24,'💡 HINT (-1pt)',[100,140,80],hhov,false);
   } else if (gs.hintUsed && gs.currentQ?.hint) {
     p.fill(100,160,100,180);
-    p.textFont('Share Tech Mono');
+    p.textFont("monospace");
     p.textSize(9);
     p.textAlign(p.LEFT,p.TOP);
     p.textWrap(p.WORD);
@@ -1442,34 +1504,34 @@ function drawScore(p) {
   p.rect(14,28,W-28,90,6);
 
   p.fill(col[0],col[1],col[2]);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(8);
   p.textAlign(p.LEFT,p.TOP);
   p.noStroke();
   p.text('QUESTION:', 24, 34);
   p.fill(200,220,255);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(9);
   p.textWrap(p.WORD);
   p.text(gs.currentQ?.q||'—', 24, 46, W-48, 30);
 
   p.fill(80,220,120);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(8);
   p.text('ANSWER:', 24, 78);
   p.fill(180,255,180);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(9);
   p.textWrap(p.WORD);
   p.text(gs.currentQ?.a||'—', 24, 90, W-48, 30);
 
   // Award section
   p.fill(160,200,255);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(9);
   p.textAlign(p.CENTER,p.TOP);
   p.noStroke();
-  p.text(`AWARD ${lvlDef.pts} PTS TO:`, W/2, 126);
+  p.text(`AWARD ${getAwardPoints()} PTS TO:`, W/2, 126);
 
   if (!gs.awardConfirmed) {
     const n=gs.numPlayers;
@@ -1497,7 +1559,7 @@ function drawScore(p) {
   } else {
     const winner=gs.players[gs.awardedTo];
     p.fill(80,255,140);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(12);
     p.textAlign(p.CENTER,p.CENTER);
     p.drawingContext.shadowBlur=12;
@@ -1542,19 +1604,19 @@ function drawWild(p) {
   p.drawingContext.shadowBlur=0;
 
   p.fill(220,180,80);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(22);
   p.text(ev.name, W/2, H/2-40);
 
   p.fill(200,220,255);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(11);
   p.textWrap(p.WORD);
   p.text(ev.text, W/2-200, H/2-10, 400, 60);
 
   if (ev.type==='swap' || ev.type==='steal') {
     p.fill(160,200,255);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(9);
     p.textAlign(p.CENTER,p.TOP);
     p.noStroke();
@@ -1609,7 +1671,7 @@ function drawWinner(p) {
   p.drawingContext.shadowBlur=0;
 
   p.fill(255,220,80);
-  p.textFont('Orbitron');
+  p.textFont("system-ui");
   p.textSize(20);
   p.textAlign(p.CENTER,p.TOP);
   p.drawingContext.shadowBlur=14;
@@ -1635,7 +1697,7 @@ function drawWinner(p) {
     p.rect(80,ry,W-160,32,4);
     p.noStroke();
     p.fill(255);
-    p.textFont('Orbitron');
+    p.textFont("system-ui");
     p.textSize(11);
     p.textAlign(p.LEFT,p.CENTER);
     p.text(`${medal} ${pl.emoji} ${pl.name}`, 96, ry+16);
@@ -1652,7 +1714,7 @@ function drawWinner(p) {
   p.rect(80,logY,W-160,Math.min(gs.log.length*14+12,80),4);
   p.noStroke();
   p.fill(100,140,180);
-  p.textFont('Share Tech Mono');
+  p.textFont("monospace");
   p.textSize(7);
   p.textAlign(p.LEFT,p.TOP);
   for (let i=0;i<Math.min(gs.log.length,5);i++) {
@@ -1766,6 +1828,7 @@ function handleClick(p) {
       if (isHover(p,lx,ly,lw,lh)) {
         gs.selectedLvl=lv.id;
         loadChallenge();
+        saveGame();
         return;
       }
     }
@@ -1774,6 +1837,7 @@ function handleClick(p) {
     // Hint
     if (!gs.hintUsed && gs.currentQ?.hint && isHover(p,14,230,140,24)) {
       gs.hintUsed=true;
+      saveGame();
       return;
     }
     // Done
@@ -1793,18 +1857,10 @@ function handleClick(p) {
         if (isHover(p,startX+i*(bw+6),144,bw,42)) { gs.awardedTo=i; return; }
       }
       // Skip
-      if (isHover(p,W/2-60,196,120,26)) {
-        gs.awardedTo=-1;
-        gs.awardedPts=0;
-        gs.awardConfirmed=true;
-        gs.awardPending=false;
-        gs.log.push({turn:gs.currentTurn,player:gs.players[gs.currentPlayer].name,square:SQ_LABELS[gs.players[gs.currentPlayer].pos],level:gs.selectedLvl,pts:0,awardedTo:'—',ts:new Date().toLocaleTimeString()});
-        saveGame();
-        return;
-      }
+      if (isHover(p,W/2-60,196,120,26)) { skipAward(); return; }
       // Confirm
       if (gs.awardedTo>=0 && isHover(p,W/2-80,232,160,30)) {
-        awardPoints(gs.awardedTo, (LEVELS.find(l=>l.id===(gs.selectedLvl||'beginner'))||LEVELS[1]).pts);
+        awardPoints(gs.awardedTo, getAwardPoints());
         return;
       }
     } else {
@@ -1869,13 +1925,8 @@ function handleKeyPress(p, key, keyCode) {
       for (let i=0;i<n;i++) {
         if (key===String(i+1)) { gs.awardedTo=i; return; }
       }
-      if (key==='0') {
-        gs.awardedTo=-1; gs.awardedPts=0; gs.awardConfirmed=true; gs.awardPending=false;
-        gs.log.push({turn:gs.currentTurn,player:gs.players[gs.currentPlayer].name,square:SQ_LABELS[gs.players[gs.currentPlayer].pos],level:gs.selectedLvl,pts:0,awardedTo:'—',ts:new Date().toLocaleTimeString()});
-        saveGame();
-        return;
-      }
-      if (keyCode===13 && gs.awardedTo>=0) awardPoints(gs.awardedTo,lvlDef.pts);
+      if (key==='0') { skipAward(); return; }
+      if (keyCode===13 && gs.awardedTo>=0) awardPoints(gs.awardedTo,getAwardPoints());
     } else {
       if (keyCode===13) nextTurn();
     }
@@ -1898,7 +1949,10 @@ new p5(function(p) {
   p.setup = function() {
     const canvas = p.createCanvas(W, H);
     canvas.parent(document.body);
-    p.textFont('Orbitron');
+    canvas.elt.setAttribute('role', 'application');
+    canvas.elt.setAttribute('aria-label', 'AXIOM-7 educational board game. Use the on-screen controls or the keyboard hints.');
+    canvas.elt.tabIndex = 0;
+    p.textFont("system-ui");
     gs = defaultState();
     initStarfield(p);
     gs.savedExists = !!loadSave();
