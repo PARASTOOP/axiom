@@ -372,7 +372,9 @@ function defaultState() {
     hintUsed: false,
     awardPending: true,
     awardedTo: -1,
+    awardedPts: 0,
     awardConfirmed: false,
+    finishingPlayer: -1,
     wildEvent: null,
     wildSwapTarget: -1,
     wildStealTarget: -1,
@@ -413,7 +415,38 @@ function initStarfield(p) {
 }
 
 // ── SAVE / LOAD ───────────────────────────────────────────────────────────────
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
+const RESUMABLE_SCREENS = ['roll','board','challenge','score','wild','winner'];
+
+function isValidQuestionSave(q) {
+  return !!q && typeof q.q === 'string' && typeof q.a === 'string' &&
+    (q.hint === undefined || typeof q.hint === 'string');
+}
+
+function isValidPhaseSave(phase, numPlayers) {
+  if (!phase || !RESUMABLE_SCREENS.includes(phase.screen)) return false;
+  if (!Number.isInteger(phase.diceVal) || phase.diceVal < 0 || phase.diceVal > 6 ||
+      typeof phase.diceRolled !== 'boolean' ||
+      (phase.selectedLvl !== null && !LEVELS.some(l => l.id === phase.selectedLvl)) ||
+      typeof phase.challengeStarted !== 'boolean' ||
+      !Number.isFinite(phase.timerStart) || !Number.isFinite(phase.timerRemain) || phase.timerRemain < 0 ||
+      typeof phase.hintUsed !== 'boolean' || typeof phase.awardPending !== 'boolean' ||
+      !Number.isInteger(phase.awardedTo) || phase.awardedTo < -1 || phase.awardedTo >= numPlayers ||
+      !Number.isFinite(phase.awardedPts) || typeof phase.awardConfirmed !== 'boolean' ||
+      !Number.isInteger(phase.finishingPlayer) || phase.finishingPlayer < -1 || phase.finishingPlayer >= numPlayers ||
+      !Number.isInteger(phase.wildSwapTarget) || !Number.isInteger(phase.wildStealTarget) ||
+      typeof phase.animating !== 'boolean' || !Number.isInteger(phase.animFrame) || phase.animFrame < 0 ||
+      !Number.isInteger(phase.animFrom) || phase.animFrom < 0 || phase.animFrom >= NUM_SQUARES ||
+      !Number.isInteger(phase.animTo) || phase.animTo < 0 || phase.animTo >= NUM_SQUARES ||
+      !Number.isInteger(phase.animStep) || phase.animStep < 0) return false;
+
+  if ((phase.screen === 'challenge' || phase.screen === 'score') && !isValidQuestionSave(phase.currentQ)) return false;
+  if (phase.screen === 'wild' && (!phase.wildEvent || !['swap','steal'].includes(phase.wildEvent.type))) return false;
+  if (phase.screen === 'winner' && phase.finishingPlayer < 0) return false;
+  if (phase.animating && (!phase.diceRolled || phase.screen !== 'roll')) return false;
+  return phase.currentQ === null || isValidQuestionSave(phase.currentQ);
+}
+
 function isValidSave(save) {
   return !!save &&
     save.version === SAVE_VERSION &&
@@ -426,7 +459,8 @@ function isValidSave(save) {
     ) &&
     Number.isInteger(save.currentPlayer) && save.currentPlayer >= 0 && save.currentPlayer < save.numPlayers &&
     Number.isInteger(save.currentTurn) && save.currentTurn >= 1 &&
-    Array.isArray(save.log);
+    Array.isArray(save.log) &&
+    isValidPhaseSave(save.phase, save.numPlayers);
 }
 
 function saveGame() {
@@ -437,7 +471,31 @@ function saveGame() {
       players: gs.players,
       currentPlayer: gs.currentPlayer,
       currentTurn: gs.currentTurn,
-      log: gs.log
+      log: gs.log,
+      phase: {
+        screen: gs.screen,
+        diceVal: gs.diceVal,
+        diceRolled: gs.diceRolled,
+        currentQ: gs.currentQ,
+        selectedLvl: gs.selectedLvl,
+        challengeStarted: gs.challengeStarted,
+        timerStart: gs.timerStart,
+        timerRemain: gs.timerRemain,
+        hintUsed: gs.hintUsed,
+        awardPending: gs.awardPending,
+        awardedTo: gs.awardedTo,
+        awardedPts: gs.awardedPts,
+        awardConfirmed: gs.awardConfirmed,
+        finishingPlayer: gs.finishingPlayer,
+        wildEvent: gs.wildEvent,
+        wildSwapTarget: gs.wildSwapTarget,
+        wildStealTarget: gs.wildStealTarget,
+        animating: gs.animating,
+        animFrame: gs.animFrame,
+        animFrom: gs.animFrom,
+        animTo: gs.animTo,
+        animStep: gs.animStep
+      }
     };
     localStorage.setItem('axiom7_save', JSON.stringify(save));
     gs.savedExists = true;
@@ -467,6 +525,30 @@ function clearSave() {
   gs.savedExists = false;
 }
 
+function restoreSave(save, p) {
+  gs.numPlayers = save.numPlayers;
+  for (let i = 0; i < save.numPlayers; i++) {
+    gs.players[i] = { ...gs.players[i], ...save.players[i] };
+  }
+  gs.currentPlayer = save.currentPlayer;
+  gs.currentTurn = save.currentTurn;
+  gs.log = save.log;
+  Object.assign(gs, save.phase);
+  initStarfield(p);
+  updateFacPanel();
+
+  if (gs.screen === 'winner') {
+    setSpeech('winner', getWinner().name);
+    spawnConfetti(p);
+  } else if (gs.screen === 'challenge') {
+    setSpeech('challenge', gs.selectedLvl);
+  } else if (gs.screen === 'score') {
+    setSpeech('score', gs.currentQ.a);
+  } else if (gs.screen === 'roll') {
+    setSpeech('roll', gs.players[gs.currentPlayer].name);
+  }
+}
+
 // ── GAME LOGIC ────────────────────────────────────────────────────────────────
 function startNewGame() {
   const names = gs.players.map(p => p.name);
@@ -494,6 +576,7 @@ function launchGame() {
   gs.currentPlayer = 0;
   gs.currentTurn = 1;
   gs.log = [];
+  gs.finishingPlayer = -1;
   gs.screen = 'roll';
   setSpeech('roll', gs.players[gs.currentPlayer].name);
   saveGame();
@@ -531,6 +614,7 @@ function tickAnim() {
 function afterMove() {
   const cp = gs.players[gs.currentPlayer];
   if (cp.pos >= NUM_SQUARES - 1) {
+    gs.finishingPlayer = gs.currentPlayer;
     gs.screen = 'winner';
     setSpeech('winner', cp.name);
     saveGame();
@@ -568,6 +652,7 @@ function loadChallenge() {
   gs.hintUsed = false;
   gs.awardPending = true;
   gs.awardedTo = -1;
+  gs.awardedPts = 0;
   gs.awardConfirmed = false;
   updateFacPanel();
 }
@@ -575,6 +660,7 @@ function loadChallenge() {
 function startTimer() {
   gs.challengeStarted = true;
   gs.timerStart = Date.now();
+  saveGame();
 }
 
 function tickTimer() {
@@ -585,10 +671,12 @@ function tickTimer() {
   gs.timerRemain = Math.max(0, ((total - elapsed) / 1000));
   if (gs.timerRemain <= 0) {
     gs.screen = 'score';
+    gs.challengeStarted = false;
     gs.awardedTo = -1;
     gs.awardedPts = 0;
     setSpeech('score', gs.currentQ?.a || '');
     updateFacPanel();
+    saveGame();
   }
 }
 
@@ -597,6 +685,7 @@ function goToScore() {
   gs.challengeStarted = false;
   gs.awardPending = true;
   gs.awardedTo = -1;
+  gs.awardedPts = 0;
   gs.awardConfirmed = false;
   setSpeech('score', gs.currentQ?.a || '');
   updateFacPanel();
@@ -608,8 +697,15 @@ function getAwardPoints() {
   return Math.max(0, lvl.pts - (gs.hintUsed ? 1 : 0));
 }
 
+function selectChallengeLevel(level) {
+  if (gs.screen !== 'challenge' || gs.challengeStarted) return;
+  gs.selectedLvl = level;
+  loadChallenge();
+  saveGame();
+}
+
 function skipAward() {
-  if (gs.awardConfirmed) return;
+  if (gs.screen !== 'score' || gs.awardConfirmed) return;
   gs.awardedTo = -1;
   gs.awardedPts = 0;
   gs.awardConfirmed = true;
@@ -627,7 +723,7 @@ function skipAward() {
 }
 
 function awardPoints(playerIdx, pts) {
-  if (gs.awardConfirmed) return;
+  if (gs.screen !== 'score' || gs.awardConfirmed) return;
   gs.awardedTo = playerIdx;
   gs.awardedPts = pts;
   gs.players[playerIdx].score = Math.max(0, gs.players[playerIdx].score + pts);
@@ -656,7 +752,9 @@ function nextTurn() {
   gs.challengeStarted = false;
   gs.awardPending = true;
   gs.awardedTo = -1;
+  gs.awardedPts = 0;
   gs.awardConfirmed = false;
+  gs.finishingPlayer = -1;
   gs.wildEvent = null;
   gs.screen = 'roll';
   setSpeech('roll', gs.players[gs.currentPlayer].name);
@@ -742,7 +840,7 @@ function updateFacPanel() {
     }
   }
 }
-function facAward(pts) { if (gs.screen==='score'||gs.screen==='challenge') awardPoints(facTarget, pts); }
+function facAward(pts) { if (gs.screen === 'score') awardPoints(facTarget, pts); }
 function facMovePlayer() {
   const sq = parseInt(document.getElementById('fac-sq')?.value || '0');
   if (sq >= 0 && sq < NUM_SQUARES) {
@@ -760,11 +858,18 @@ document.getElementById('fac-toggle').addEventListener('click', () => {
 });
 
 // ── EXPORT ────────────────────────────────────────────────────────────────────
+function getWinner() {
+  if (Number.isInteger(gs.finishingPlayer) && gs.finishingPlayer >= 0 && gs.finishingPlayer < gs.numPlayers) {
+    return gs.players[gs.finishingPlayer];
+  }
+  return [...gs.players.slice(0, gs.numPlayers)].sort((a,b) => b.score - a.score)[0];
+}
+
 function exportResults() {
   const data = {
     date: new Date().toLocaleDateString(),
     players: gs.players.slice(0,gs.numPlayers).map(p=>({name:p.name,emoji:p.emoji,score:p.score})),
-    winner: gs.players.slice(0,gs.numPlayers).sort((a,b)=>b.score-a.score)[0],
+    winner: getWinner(),
     log: gs.log
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -775,7 +880,7 @@ function exportResults() {
 }
 
 function copyTextSummary() {
-  const winner = gs.players.slice(0,gs.numPlayers).sort((a,b)=>b.score-a.score)[0];
+  const winner = getWinner();
   let txt = `AXIOM-7 Game — ${new Date().toLocaleDateString()}\n`;
   txt += `Winner: ${winner.emoji} ${winner.name} with ${winner.score} pts\n\nScores:\n`;
   gs.players.slice(0,gs.numPlayers).sort((a,b)=>b.score-a.score)
@@ -1424,7 +1529,7 @@ function drawChallenge(p) {
     const lv=lvls[l];
     const lx=14+l*82, ly=52, lw=80, lh=30;
     const sel=gs.selectedLvl===lv.id;
-    const lhov=isHover(p,lx,ly,lw,lh);
+    const lhov=!gs.challengeStarted && isHover(p,lx,ly,lw,lh);
     const lcol=LEVEL_COLS[lv.id];
     // accent bar
     if (sel) {
@@ -1567,7 +1672,7 @@ function drawScore(p) {
     // Skip / no award
     const skiphov=isHover(p,W/2-60,196,120,26);
     drawButton(p,W/2-60,196,120,26,'SKIP (0pts)',[80,80,100],skiphov,false);
-  } else {
+  } else if (gs.awardedTo >= 0) {
     const winner=gs.players[gs.awardedTo];
     p.fill(80,255,140);
     p.textFont("system-ui");
@@ -1577,6 +1682,12 @@ function drawScore(p) {
     p.drawingContext.shadowColor='rgba(80,255,140,0.6)';
     p.text(`${winner.emoji} ${winner.name} +${gs.awardedPts} pts!`, W/2, 180);
     p.drawingContext.shadowBlur=0;
+  } else {
+    p.fill(160,180,210);
+    p.textFont("system-ui");
+    p.textSize(12);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.text('No points awarded.', W/2, 180);
   }
 
   // Confirm / Next
@@ -1671,8 +1782,10 @@ function drawWinner(p) {
   drawBg(p);
   drawConfetti(p);
 
-  const sorted=[...gs.players.slice(0,gs.numPlayers)].sort((a,b)=>b.score-a.score);
-  const winner=sorted[0];
+  const winner=getWinner();
+  const sorted=[winner, ...gs.players.slice(0,gs.numPlayers)
+    .filter(pl=>pl!==winner)
+    .sort((a,b)=>b.score-a.score)];
 
   p.drawingContext.shadowBlur=40;
   p.drawingContext.shadowColor='rgba(255,220,80,0.9)';
@@ -1761,20 +1874,7 @@ function handleClick(p) {
     if (gs.savedExists && isHover(p,W/2-100,H/2+56,200,36)) {
       const save=loadSave();
       if (save) {
-        gs.numPlayers=save.numPlayers;
-        for(let i=0;i<save.numPlayers;i++){
-          gs.players[i].name=save.players[i].name;
-          gs.players[i].emoji=save.players[i].emoji;
-          gs.players[i].pos=save.players[i].pos;
-          gs.players[i].score=save.players[i].score;
-          gs.players[i].defaultLvl=save.players[i].defaultLvl||'beginner';
-        }
-        gs.currentPlayer=save.currentPlayer;
-        gs.currentTurn=save.currentTurn;
-        gs.log=save.log||[];
-        gs.screen='roll';
-        initStarfield(p);
-        setSpeech('roll',gs.players[gs.currentPlayer].name);
+        restoreSave(save, p);
       }
     }
     return;
@@ -1833,14 +1933,14 @@ function handleClick(p) {
 
   if (screen==='challenge') {
     // Level picker
-    for (let l=0;l<LEVELS.length;l++) {
-      const lv=LEVELS[l];
-      const lx=14+l*82,ly=52,lw=80,lh=30;
-      if (isHover(p,lx,ly,lw,lh)) {
-        gs.selectedLvl=lv.id;
-        loadChallenge();
-        saveGame();
-        return;
+    if (!gs.challengeStarted) {
+      for (let l=0;l<LEVELS.length;l++) {
+        const lv=LEVELS[l];
+        const lx=14+l*82,ly=52,lw=80,lh=30;
+        if (isHover(p,lx,ly,lw,lh)) {
+          selectChallengeLevel(lv.id);
+          return;
+        }
       }
     }
     // Start timer
@@ -1922,10 +2022,8 @@ function handleKeyPress(p, key, keyCode) {
     if (key==='b'||key==='B') { gs.screen='board'; return; }
   }
   if (gs.screen==='challenge') {
-    if (key==='1') { gs.selectedLvl='starter'; loadChallenge(); }
-    if (key==='2') { gs.selectedLvl='beginner'; loadChallenge(); }
-    if (key==='3') { gs.selectedLvl='intermediate'; loadChallenge(); }
-    if (key==='4') { gs.selectedLvl='advanced'; loadChallenge(); }
+    const levelKeys = { '1':'starter', '2':'beginner', '3':'intermediate', '4':'advanced' };
+    if (levelKeys[key]) { selectChallengeLevel(levelKeys[key]); return; }
     if (keyCode===13 && gs.challengeStarted) goToScore();
     if (key===' ' && !gs.challengeStarted) startTimer();
   }
