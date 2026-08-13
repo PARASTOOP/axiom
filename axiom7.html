@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AXIOM-7</title>
 <!-- System-font fallbacks keep text available when the network is unavailable. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"
-  onerror="this.onerror=function(){document.getElementById('boot-error').hidden=false};this.src='https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js'"></script>
+<script src="vendor/p5.min.js"
+  onerror="window.addEventListener('DOMContentLoaded',function(){document.getElementById('boot-error').hidden=false})"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0a0a1e; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: auto; }
@@ -75,7 +75,7 @@
 </head>
 <body>
 <div id="boot-error" role="alert" hidden>
-  AXIOM-7 could not load its drawing engine. Check the internet connection, then reload the application.
+  AXIOM-7 could not load its bundled drawing engine. Keep the vendor folder beside axiom7.html, then reload the application.
 </div>
 <noscript><div id="boot-error">AXIOM-7 requires JavaScript to run.</div></noscript>
 <div id="name-inputs"></div>
