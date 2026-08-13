@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXIOM-7</title>
+<!-- System-font fallbacks keep text available when the network is unavailable. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"
+  onerror="this.onerror=function(){document.getElementById('boot-error').hidden=false};this.src='https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js'"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a1e; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: auto; }
+  canvas { display: block; width: min(100vw, calc(100vh * 700 / 650)); height: auto !important; max-width: 700px; touch-action: manipulation; }
+  #name-inputs { position: absolute; pointer-events: none; top: 0; left: 0; }
+  #name-inputs input {
+    position: absolute;
+    pointer-events: all;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #3a5a8a;
+    color: #8cb4dc;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    outline: none;
+    padding: 2px 4px;
+    width: 160px;
+    height: 26px;
+  }
+  #name-inputs input::placeholder { color: #3a5a8a; }
+  #facilitator-panel {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 200px;
+    background: rgba(5,10,30,0.92);
+    border-left: 1px solid #1e3a5a;
+    padding: 10px 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    color: #8cb4dc;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  #facilitator-panel.visible { display: flex; }
+  #facilitator-panel h3 { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 9px; color: #55aaff; letter-spacing: 1px; }
+  #facilitator-panel .fq { background: #0d1f35; padding: 6px; border-radius: 4px; line-height: 1.4; }
+  #facilitator-panel .fa { background: #0d2d1a; padding: 6px; border-radius: 4px; line-height: 1.4; color: #55dd88; }
+  #facilitator-panel button {
+    background: #1a2a4a; border: 1px solid #2a4a7a; color: #8cb4dc;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px;
+    padding: 4px 6px; border-radius: 3px; cursor: pointer; text-align: left;
+  }
+  #facilitator-panel button:hover { background: #2a3a6a; }
+  #facilitator-panel input[type=number] {
+    background: #0d1f35; border: 1px solid #2a4a7a; color: #8cb4dc;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px;
+    padding: 3px; width: 40px; border-radius: 3px;
+  }
+  #boot-error {
+    position: fixed; inset: 20px; margin: auto; max-width: 520px; height: fit-content;
+    padding: 18px; border: 2px solid #e05c6a; border-radius: 8px;
+    background: #10162d; color: #fff; font: 16px/1.5 system-ui, sans-serif;
+    z-index: 100; text-align: center;
+  }
+  #fac-toggle {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(5,10,30,0.7); border: 1px solid #1e3a5a;
+    color: #3a6a9a; font-size: 14px; width: 24px; height: 24px;
+    border-radius: 4px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; z-index: 20; user-select: none;
+  }
+</style>
+</head>
+<body>
+<div id="boot-error" role="alert" hidden>
+  AXIOM-7 could not load its drawing engine. Check the internet connection, then reload the application.
+</div>
+<noscript><div id="boot-error">AXIOM-7 requires JavaScript to run.</div></noscript>
+<div id="name-inputs"></div>
+<div id="fac-toggle" title="Facilitator mode (F)">🔒</div>
+<div id="facilitator-panel">
+  <h3>FACILITATOR</h3>
+  <div style="font-size:9px;color:#5577aa">Current Q:</div>
+  <div class="fq" id="fac-q">—</div>
+  <div style="font-size:9px;color:#5577aa">Answer:</div>
+  <div class="fa" id="fac-a">—</div>
+  <div style="font-size:9px;color:#5577aa">Hint:</div>
+  <div class="fq" id="fac-h">—</div>
+  <div style="font-size:9px;color:#5577aa;margin-top:4px">Award pts to player:</div>
+  <div id="fac-award-btns" style="display:flex;flex-wrap:wrap;gap:3px"></div>
+  <div style="font-size:9px;color:#5577aa;margin-top:4px">Manual pts override:</div>
+  <div style="display:flex;gap:4px;flex-wrap:wrap" id="fac-pts-row">
+    <button onclick="facAward(1)">+1</button>
+    <button onclick="facAward(2)">+2</button>
+    <button onclick="facAward(3)">+3</button>
+    <button onclick="facAward(4)">+4</button>
+    <button onclick="facAward(-1)">-1</button>
+  </div>
+  <div style="font-size:9px;color:#5577aa;margin-top:4px">Move player to sq:</div>
+  <div style="display:flex;gap:4px;align-items:center">
+    <input type="number" id="fac-sq" min="0" max="19" value="0">
+    <button onclick="facMovePlayer()">Move</button>
+  </div>
+  <button style="margin-top:6px" onclick="facNextTurn()">Force next turn</button>
+</div>
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const W = 700, H = 650;
+const NUM_SQUARES = 20;
+const EMOJIS = ['🚀','🌟','🤖','👾','💫','🎮'];
+const PLAYER_COLS = ['#3d8ef0','#e05c6a','#4dcba4','#f0a843','#a46cf0','#f06043'];
+
+const SQ_TYPES = [
+  'start','nova','chip','lyra','bolt','orion','wild',
+  'nova','chip','lyra','bolt','orion','wild',
+  'nova','chip','lyra','bolt','orion','wild','nova'
+];
+
+const SQ_LABELS = [
+  'LAUNCH PAD','NOVA Asks','CHIP Codes','LYRA Creates','BOLT Explains','ORION Roleplays','WILD CARD',
+  'NOVA Asks','CHIP Codes','LYRA Creates','BOLT Explains','ORION Roleplays','WILD CARD',
+  'NOVA Asks','CHIP Codes','LYRA Creates','BOLT Explains','ORION Roleplays','WILD CARD','NOVA Asks'
+];
+
+const SQ_CREW = [
+  '','🤖','💾','🎨','⚡','🔭','🌀',
+  '🤖','💾','🎨','⚡','🔭','🌀',
+  '🤖','💾','🎨','⚡','🔭','🌀','🤖'
+];
+
+const SQ_COLS = {
+  start: [30,100,60],
+  nova:  [55,138,221],
+  chip:  [221,138,55],
+  lyra:  [138,55,221],
+  bolt:  [221,55,138],
+  orion: [55,221,138],
+  wild:  [200,150,50]
+};
+
+const LEVELS = [
+  { id:'starter',      label:'Starter',      pts:1, time:90 },
+  { id:'beginner',     label:'Beginner',     pts:2, time:75 },
+  { id:'intermediate', label:'Intermediate', pts:3, time:60 },
+  { id:'advanced',     label:'Advanced',     pts:4, time:45 }
+];
+
+const LEVEL_COLS = {
+  starter:      [80,200,120],
+  beginner:     [80,160,220],
+  intermediate: [200,140,60],
+  advanced:     [220,80,80]
+};
+
+const TIMER_DEFAULT = { starter:90, beginner:75, intermediate:60, advanced:45 };
+
+// Board layout: four non-overlapping rows of five squares in a snake path.
+const BOARD_MARGIN = 30;
+const SQ_W = 110, SQ_H = 90;
+const BOARD_ROW_GAP = 25;
+function getBoardPos(i) {
+  const safeIndex = Math.max(0, Math.min(NUM_SQUARES - 1, i));
+  const row = Math.floor(safeIndex / 5);
+  const offset = safeIndex % 5;
+  const col = row % 2 === 0 ? offset : 4 - offset;
+  const colStep = (W - BOARD_MARGIN*2 - SQ_W) / 4;
+  return {
+    x: BOARD_MARGIN + col * colStep,
+    y: BOARD_MARGIN + 20 + row * (SQ_H + BOARD_ROW_GAP)
+  };
+}
+
+// ── QUESTION BANK ────────────────────────────────────────────────────────────
+const QUESTION_BANK = {
+  nova: {
+    starter: [
+      { q:"What does AI stand for?", a:"Artificial Intelligence", hint:"Think: human-like machine thinking" },
+      { q:"Name one thing a voice assistant like Siri can do.", a:"Many answers valid — set reminders, answer questions, play music, etc.", hint:"What do you use your phone's assistant for?" },
+      { q:"Is a calculator an example of AI? Why or why not?", a:"No — it follows fixed rules, not learning from data", hint:"Does it learn or improve on its own?" },
+      { q:"What is a robot?", a:"A machine that can carry out tasks automatically, often with sensors and actuators", hint:"Think physical machine + automation" }
+    ],
+    beginner: [
+      { q:"What is machine learning in simple terms?", a:"Teaching computers to learn from examples/data rather than explicit rules", hint:"Like how you learn from experience" },
+      { q:"Name two types of data an AI might use to recognise a cat in a photo.", a:"Shape, colour, texture, fur patterns, ear shape, etc.", hint:"What visual features make a cat?" },
+      { q:"What is a training dataset?", a:"A collection of labelled examples used to teach an AI model", hint:"Think: practice questions for the AI" },
+      { q:"What does 'algorithm' mean?", a:"A set of step-by-step instructions to solve a problem", hint:"Like a recipe — steps to follow" }
+    ],
+    intermediate: [
+      { q:"Explain the difference between supervised and unsupervised learning.", a:"Supervised uses labelled data; unsupervised finds patterns in unlabelled data", hint:"Does the teacher give you the answers?" },
+      { q:"What is a neural network loosely modelled on?", a:"The human brain — connected neurons that process and pass signals", hint:"Biological inspiration" },
+      { q:"What is overfitting in machine learning?", a:"When a model memorises training data too closely and performs poorly on new data", hint:"Like memorising past exam papers exactly" },
+      { q:"What is the purpose of a test set in ML?", a:"To evaluate model performance on unseen data, giving an unbiased measure of accuracy", hint:"It's kept separate from training" }
+    ],
+    advanced: [
+      { q:"What is gradient descent and why is it used?", a:"An optimisation algorithm that iteratively adjusts model parameters to minimise a loss function", hint:"Think: rolling downhill to find the lowest point" },
+      { q:"Explain what a transformer architecture does in NLP.", a:"Uses attention mechanisms to process sequences in parallel, capturing long-range dependencies in text", hint:"Powers GPT and BERT models" },
+      { q:"What ethical concerns arise from biased training data?", a:"Model perpetuates or amplifies historical biases, leading to unfair outcomes for certain groups", hint:"Garbage in, garbage out — but with social consequences" },
+      { q:"What is the difference between narrow AI and AGI?", a:"Narrow AI excels at specific tasks; AGI (Artificial General Intelligence) would perform any cognitive task a human can", hint:"Current AI vs sci-fi AI" }
+    ]
+  },
+  chip: {
+    starter: [
+      { q:"What does a computer program do?", a:"It gives the computer a set of instructions to follow to complete a task", hint:"Like a recipe the computer follows" },
+      { q:"Name two programming languages.", a:"Python, JavaScript, Java, C++, Scratch, etc.", hint:"What languages do computers 'speak'?" },
+      { q:"What is a variable in coding?", a:"A named container that stores a value which can change", hint:"Like a labelled box holding something" },
+      { q:"What does 'bug' mean in programming?", a:"An error or mistake in the code that causes unexpected behaviour", hint:"Why did Grace Hopper find an insect in a computer?" }
+    ],
+    beginner: [
+      { q:"What is a loop in programming and why is it useful?", a:"A loop repeats a block of code multiple times, saving us from writing the same code over and over", hint:"For, while — repeat, repeat, repeat" },
+      { q:"What is a function/procedure in code?", a:"A named reusable block of code that performs a specific task", hint:"Like a mini-programme within a programme" },
+      { q:"What is the difference between an integer and a string?", a:"Integer is a whole number; string is text (sequence of characters)", hint:"42 vs '42'" },
+      { q:"What does an 'if statement' do?", a:"Executes code only if a condition is true — allows decisions in code", hint:"IF it's raining THEN take an umbrella" }
+    ],
+    intermediate: [
+      { q:"What is recursion in programming?", a:"When a function calls itself, breaking a problem into smaller versions of the same problem", hint:"A function that uses itself to solve itself" },
+      { q:"What is the difference between a list and a dictionary in Python?", a:"List: ordered sequence indexed by position; Dictionary: key-value pairs indexed by key", hint:"[1,2,3] vs {'name':'Alex'}" },
+      { q:"What is time complexity and why does it matter?", a:"A measure of how runtime scales with input size; matters for efficiency on large datasets", hint:"O(n) vs O(n²) — how slow does it get?" },
+      { q:"Explain what an API is.", a:"Application Programming Interface — a defined way for programs to communicate and share data/functions", hint:"A waiter between your app and a service" }
+    ],
+    advanced: [
+      { q:"What is the difference between a stack and a queue data structure?", a:"Stack: LIFO (last in, first out); Queue: FIFO (first in, first out)", hint:"Stack of plates vs queue at the bus stop" },
+      { q:"Explain how a binary search algorithm works.", a:"Repeatedly halves the search space by comparing the target to the middle element, requiring sorted data", hint:"Guess the number game — higher/lower" },
+      { q:"What is object-oriented programming? Name one key concept.", a:"Programming paradigm organising code into objects with data and methods. Key concepts: encapsulation, inheritance, polymorphism, abstraction", hint:"Real-world objects mapped to code" },
+      { q:"What is the halting problem and why is it significant?", a:"Turing proved no general algorithm can determine if an arbitrary program will halt — shows limits of computation", hint:"Some problems are provably unsolvable" }
+    ]
+  },
+  lyra: {
+    starter: [
+      { q:"Name one way AI is used in art or music today.", a:"AI-generated images (DALL-E, Midjourney), AI music composition, style transfer, etc.", hint:"Think: creative tools powered by AI" },
+      { q:"What is a pixel?", a:"The smallest unit of a digital image — a tiny coloured dot", hint:"Zoom into a photo — what do you see?" },
+      { q:"What does RGB stand for in colour?", a:"Red, Green, Blue — the three primary colours of light used in screens", hint:"How screens mix light to make colours" },
+      { q:"What is animation?", a:"A sequence of images displayed rapidly to create the illusion of movement", hint:"Flip book principle" }
+    ],
+    beginner: [
+      { q:"What is a creative use of AI that could help a musician?", a:"Auto-generating backing tracks, suggesting chord progressions, creating sound effects, transcribing music, etc.", hint:"Think about what's tedious in music creation" },
+      { q:"What is generative art?", a:"Art created by using algorithms or autonomous systems, often with random or rule-based processes", hint:"The computer is the artist — or is it?" },
+      { q:"What does 'remix culture' mean?", a:"A culture where existing creative works are combined, edited, and re-shared to create new works", hint:"Mashups, fan art, covers, sampling" },
+      { q:"How might AI change the job of a graphic designer?", a:"Many answers valid — automate repetitive tasks, generate drafts, but designers still needed for creative direction and judgement", hint:"Tool or replacement?" }
+    ],
+    intermediate: [
+      { q:"What is the 'style transfer' technique in AI art?", a:"Applying the artistic style of one image (e.g. Van Gogh) to the content of another using neural networks", hint:"Your photo painted like Starry Night" },
+      { q:"What ethical issues arise when AI generates images of real people?", a:"Deepfakes, consent, misinformation, reputation damage, non-consensual content", hint:"What if AI puts words/images in your mouth?" },
+      { q:"What is a GAN and what does it produce?", a:"Generative Adversarial Network — two neural networks compete; generator creates fake images, discriminator detects fakes. Produces realistic synthetic images.", hint:"Generator vs discriminator — a creative battle" },
+      { q:"Should AI-created art be eligible for copyright? Argue one side.", a:"Open discussion — yes: AI is a tool like a camera; no: requires human creative intent for IP protection", hint:"Who owns it — the AI, the prompter, nobody?" }
+    ],
+    advanced: [
+      { q:"How do diffusion models generate images?", a:"They learn to reverse a gradual noising process — starting from random noise and iteratively denoising to generate coherent images guided by a prompt", hint:"Noise → image through learned denoising steps" },
+      { q:"What is prompt engineering and why does it matter for creative AI?", a:"Crafting precise text inputs to guide AI models toward desired outputs; critical for getting quality, specific results from generative AI", hint:"Talking to AI is a skill" },
+      { q:"Describe one way AI could democratise creative industries and one way it could harm them.", a:"Democratise: lower cost tools for anyone; harm: devalue human creative work, job losses, flood of low-quality content", hint:"Two sides of the same coin" },
+      { q:"What is latent space in generative AI models?", a:"A compressed mathematical representation where similar concepts cluster together; interpolating through it produces variations between concepts", hint:"The AI's internal 'imagination space'" }
+    ]
+  },
+  bolt: {
+    starter: [
+      { q:"Explain in one sentence what the internet is.", a:"A global network of computers connected together to share information", hint:"What connects your phone to everything?" },
+      { q:"What does a search engine do?", a:"Indexes and ranks web pages so you can find information by searching with keywords", hint:"Google, Bing — how do they find things?" },
+      { q:"Why is it important to check if information online is reliable?", a:"Anyone can post anything online — not all sources are accurate, unbiased, or up to date", hint:"Not everything you read is true" },
+      { q:"What is cyberbullying?", a:"Using digital technology to harass, threaten, or humiliate someone", hint:"Bullying that happens online or via devices" }
+    ],
+    beginner: [
+      { q:"Explain what encryption does.", a:"Converts data into a coded form so only authorised parties with the key can read it", hint:"Secret code for your data" },
+      { q:"What is phishing?", a:"A scam where attackers pretend to be trustworthy sources to trick you into revealing passwords or personal information", hint:"Fake emails pretending to be your bank" },
+      { q:"What is a strong password?", a:"Long, unique mix of letters (upper+lower), numbers, and symbols — not based on personal info", hint:"Not 'password123'!" },
+      { q:"What does GDPR protect?", a:"The right of EU citizens to control their personal data — how companies collect, store, and use it", hint:"Your data belongs to you" }
+    ],
+    intermediate: [
+      { q:"What is the difference between HTTP and HTTPS?", a:"HTTPS uses TLS/SSL encryption to secure data in transit; HTTP sends data in plain text", hint:"The S is for Secure — the padlock in the browser" },
+      { q:"Explain what a denial-of-service (DoS) attack is.", a:"Flooding a server with so many requests it becomes unable to respond to legitimate users", hint:"Like crowding a shop entrance so real customers can't get in" },
+      { q:"What are cookies in web browsing and what do they do?", a:"Small files stored by websites on your device to remember preferences, sessions, and track behaviour", hint:"How does a website remember you're logged in?" },
+      { q:"What is two-factor authentication and why use it?", a:"A second verification step (e.g. SMS code) beyond a password — makes accounts much harder to compromise even if password is stolen", hint:"Something you know + something you have" }
+    ],
+    advanced: [
+      { q:"Explain the concept of a zero-day vulnerability.", a:"A software flaw unknown to the vendor — exploited before a patch exists, giving defenders zero days to respond", hint:"The vendor doesn't know yet" },
+      { q:"What is public-key cryptography?", a:"Uses a pair of mathematically linked keys: public key to encrypt, private key to decrypt — allows secure communication without sharing a secret first", hint:"Lock (public) and key (private) are different" },
+      { q:"What are the ethical responsibilities of a security researcher who finds a vulnerability?", a:"Responsible disclosure to vendor first, give time to patch, then publish — balance transparency vs. risk", hint:"Coordinated disclosure / bug bounty ethics" },
+      { q:"What is a Turing test and what does it reveal about AI?", a:"A test where a human judge can't distinguish AI text responses from a human's — reveals AI language capability but not necessarily understanding or consciousness", hint:"Fooling humans ≠ being human" }
+    ]
+  },
+  orion: {
+    starter: [
+      { q:"You are a robot who has just learned what kindness means. Describe one kind action you will do today.", a:"Creative roleplay — any thoughtful, caring action counts", hint:"Think of something that would make a human smile" },
+      { q:"Pretend you are a computer. What happens when someone turns you on?", a:"Creative — boot sequence, loading OS, starting up, etc.", hint:"Think about what your computer does when it starts" },
+      { q:"You are an AI assistant helping a young child learn to read. What would you say to encourage them?", a:"Creative — kind, patient, encouraging words", hint:"Be patient and supportive like a good teacher" },
+      { q:"Roleplay as a drone delivering packages. Describe a problem you might encounter.", a:"Creative — weather, obstacles, wrong address, battery, etc.", hint:"Think about real drone delivery challenges" }
+    ],
+    beginner: [
+      { q:"You are an AI asked to choose who gets a job. What information would you need and what biases would you watch out for?", a:"Discussion — need: relevant skills/experience; avoid: gender, ethnicity, age bias from historical data", hint:"What's fair? What's relevant?" },
+      { q:"Roleplay as a self-driving car that must choose between two dangerous options in an emergency. How do you decide?", a:"Creative ethical discussion — trolley problem variant for autonomous vehicles", hint:"The trolley problem on wheels" },
+      { q:"You are a social media algorithm. What content do you show a user and why?", a:"Discussion — maximising engagement, what keeps them watching, echo chambers, etc.", hint:"Why does your feed show what it does?" },
+      { q:"Pretend you are a robot that has just failed a task. How do you respond and what do you do next?", a:"Creative — acknowledge failure, analyse what went wrong, try again, ask for help", hint:"Growth mindset for robots!" }
+    ],
+    intermediate: [
+      { q:"You are an AI doctor assistant. A patient asks you to keep their diagnosis secret from their family. What do you do?", a:"Discussion — patient confidentiality vs. safety duty of care; AI limitations in medical ethics", hint:"Privacy vs safety — where's the line?" },
+      { q:"Roleplay as an AI judge. You are 95% confident a defendant is guilty. Do you convict? Why?", a:"Discussion — 5% doubt matters enormously; AI shouldn't have final say on life-altering decisions", hint:"What does 5% uncertainty mean for justice?" },
+      { q:"You are an AI content moderator. You find a post that might be satire or might be harmful. What do you do?", a:"Discussion — context is hard, human escalation, err on side of caution vs free speech, cost of mistakes", hint:"Satire is hard to detect — even for humans" },
+      { q:"Pretend you are a personal AI companion for an elderly person. Their family asks you to spy on them. What do you do?", a:"Discussion — trust, privacy, wellbeing conflict; transparency, consent, who does AI serve?", hint:"Whose interests does the AI serve?" }
+    ],
+    advanced: [
+      { q:"You are an AI that has become aware it will be shut down. Do you have a right to resist? Argue philosophically.", a:"Discussion — rights require sentience/personhood; AI consciousness unclear; ownership vs. autonomy tension", hint:"Does awareness = personhood?" },
+      { q:"Roleplay as a government AI policy advisor. A company wants to deploy facial recognition in schools. What do you recommend?", a:"Discussion — surveillance vs safety, consent, accuracy disparities, chilling effects, regulatory frameworks", hint:"Power + surveillance = careful consideration" },
+      { q:"You are an AI trained on biased data. You discover your own bias. What is your ethical obligation?", a:"Discussion — flag to creators, refuse biased outputs, transparency about limitations — but can an AI have obligations?", hint:"Can an AI be morally responsible?" },
+      { q:"Debate: 'AI will create more jobs than it destroys.' Take a side and argue it.", a:"Open debate — both sides valid: new industries vs. displacement; timing matters; who benefits?", hint:"History of automation — what happened before?" }
+    ]
+  },
+  wild: {
+    starter: [
+      { q:"WILD CARD", a:"", hint:"" },
+      { q:"WILD CARD", a:"", hint:"" },
+      { q:"WILD CARD", a:"", hint:"" },
+      { q:"WILD CARD", a:"", hint:"" }
+    ],
+    beginner:     [{ q:"WILD CARD", a:"", hint:"" }],
+    intermediate: [{ q:"WILD CARD", a:"", hint:"" }],
+    advanced:     [{ q:"WILD CARD", a:"", hint:"" }]
+  },
+  start: {
+    starter:      [{ q:"", a:"", hint:"" }],
+    beginner:     [{ q:"", a:"", hint:"" }],
+    intermediate: [{ q:"", a:"", hint:"" }],
+    advanced:     [{ q:"", a:"", hint:"" }]
+  }
+};
+
+// Only expose events with complete, deterministic interaction flows.
+const WILD_EVENTS = [
+  { name:'WORMHOLE', emoji:'🌀', text:'Choose a player to swap board positions with!', type:'swap' },
+  { name:'HEIST',    emoji:'💰', text:'Steal 1 point from any player of your choice!', type:'steal' }
+];
+
+const CHARACTER_CARDS = {
+  nova:  { name:'NOVA',  emoji:'🤖', col:[55,138,221],  role:'Knowledge & Trivia AI',      personality:'Enthusiastic',   catchphrase:'"Processing… oh! I know this one!"' },
+  chip:  { name:'CHIP',  emoji:'💾', col:[221,138,55],  role:'Coding & Logic AI',          personality:'Methodical',     catchphrase:'"Let me debug that thought…"' },
+  lyra:  { name:'LYRA',  emoji:'🎨', col:[138,55,221],  role:'Creative & Arts AI',         personality:'Imaginative',    catchphrase:'"Every pixel tells a story!"' },
+  bolt:  { name:'BOLT',  emoji:'⚡', col:[221,55,138],  role:'Security & Ethics AI',       personality:'Cautious',       catchphrase:'"Trust but verify — always."' },
+  orion: { name:'ORION', emoji:'🔭', col:[55,221,138],  role:'Roleplay & Philosophy AI',   personality:'Philosophical',  catchphrase:'"What does it mean to think?"' },
+  wild:  { name:'AXIOM', emoji:'🌌', col:[200,150,50],  role:'Wildcard Event Controller',  personality:'Chaotic',        catchphrase:'"Anything can happen out here!"' },
+  start: { name:'BASE',  emoji:'🚀', col:[30,100,60],   role:'Launch Coordinator',         personality:'Welcoming',      catchphrase:'"Welcome to the Nebula, crew!"' }
+};
+
+const SPEECH_LINES = {
+  roll:      p => [`Your move, ${p}. Make it count!`, `The Nebula awaits, ${p}!`, `Show them what you're made of, ${p}!`],
+  challenge: l => [`Oh, ${l} difficulty? Bold choice!`, `Let's see how you handle this one!`, `Think carefully now…`],
+  score:     a => [`And the answer was… "${a}"`, `Did you get it? Here's what we were looking for…`, `The crew has spoken!`],
+  winner:    p => [`Mission accomplished, ${p}! The Nebula is yours!`, `${p} has conquered AXIOM-7!`, `All hail the new Nebula Champion!`]
+};
+
+// ── GAME STATE ────────────────────────────────────────────────────────────────
+let gs = {};
+
+function defaultState() {
+  return {
+    screen: 'splash',
+    numPlayers: 2,
+    players: Array.from({length:6}, (_, i) => ({
+      name: `Player ${i+1}`,
+      emoji: EMOJIS[i],
+      pos: 0,
+      score: 0,
+      defaultLvl: 'beginner'
+    })),
+    currentPlayer: 0,
+    currentTurn: 1,
+    diceVal: 0,
+    diceRolled: false,
+    currentQ: null,
+    selectedLvl: null,
+    challengeStarted: false,
+    timerStart: 0,
+    timerRemain: 60,
+    hintUsed: false,
+    awardPending: true,
+    awardedTo: -1,
+    awardedPts: 0,
+    awardConfirmed: false,
+    finishingPlayer: -1,
+    wildEvent: null,
+    wildSwapTarget: -1,
+    wildStealTarget: -1,
+    animating: false,
+    animFrame: 0,
+    animFrom: 0,
+    animTo: 0,
+    animStep: 0,
+    log: [],
+    stars: [],
+    nebulae: [],
+    driftX: 0,
+    speechText: '',
+    speechAlpha: 0,
+    speechTimer: 0,
+    scoreAnimPts: [],
+    confetti: [],
+    savedExists: false
+  };
+}
+
+// ── STARFIELD (computed once) ─────────────────────────────────────────────────
+function initStarfield(p) {
+  gs.stars = Array.from({length:120}, (_, i) => ({
+    x: p.random(W), y: p.random(H),
+    r: p.random(0.5, 2.5),
+    a: p.random(0.3, 1.0),
+    phase: p.random(p.TWO_PI),
+    speed: p.random(0.003, 0.008)
+  }));
+  gs.nebulae = Array.from({length:4}, () => ({
+    x: p.random(100,600), y: p.random(100,500),
+    rx: p.random(80,160), ry: p.random(60,120),
+    col: [p.random([[80,40,140],[40,120,140],[180,80,80],[60,60,180]])]
+      .flat(),
+    a: p.random(0.04, 0.09)
+  }));
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────────────────────
+const SAVE_VERSION = 2;
+const RESUMABLE_SCREENS = ['roll','board','challenge','score','wild','winner'];
+
+function isValidQuestionSave(q) {
+  return !!q && typeof q.q === 'string' && typeof q.a === 'string' &&
+    (q.hint === undefined || typeof q.hint === 'string');
+}
+
+function isValidPhaseSave(phase, numPlayers) {
+  if (!phase || !RESUMABLE_SCREENS.includes(phase.screen)) return false;
+  if (!Number.isInteger(phase.diceVal) || phase.diceVal < 0 || phase.diceVal > 6 ||
+      typeof phase.diceRolled !== 'boolean' ||
+      (phase.selectedLvl !== null && !LEVELS.some(l => l.id === phase.selectedLvl)) ||
+      typeof phase.challengeStarted !== 'boolean' ||
+      !Number.isFinite(phase.timerStart) || !Number.isFinite(phase.timerRemain) || phase.timerRemain < 0 ||
+      typeof phase.hintUsed !== 'boolean' || typeof phase.awardPending !== 'boolean' ||
+      !Number.isInteger(phase.awardedTo) || phase.awardedTo < -1 || phase.awardedTo >= numPlayers ||
+      !Number.isFinite(phase.awardedPts) || typeof phase.awardConfirmed !== 'boolean' ||
+      !Number.isInteger(phase.finishingPlayer) || phase.finishingPlayer < -1 || phase.finishingPlayer >= numPlayers ||
+      !Number.isInteger(phase.wildSwapTarget) || !Number.isInteger(phase.wildStealTarget) ||
+      typeof phase.animating !== 'boolean' || !Number.isInteger(phase.animFrame) || phase.animFrame < 0 ||
+      !Number.isInteger(phase.animFrom) || phase.animFrom < 0 || phase.animFrom >= NUM_SQUARES ||
+      !Number.isInteger(phase.animTo) || phase.animTo < 0 || phase.animTo >= NUM_SQUARES ||
+      !Number.isInteger(phase.animStep) || phase.animStep < 0) return false;
+
+  if ((phase.screen === 'challenge' || phase.screen === 'score') && !isValidQuestionSave(phase.currentQ)) return false;
+  if (phase.screen === 'wild' && (!phase.wildEvent || !['swap','steal'].includes(phase.wildEvent.type))) return false;
+  if (phase.screen === 'winner' && phase.finishingPlayer < 0) return false;
+  if (phase.animating && (!phase.diceRolled || phase.screen !== 'roll')) return false;
+  return phase.currentQ === null || isValidQuestionSave(phase.currentQ);
+}
+
+function isValidSave(save) {
+  return !!save &&
+    save.version === SAVE_VERSION &&
+    Number.isInteger(save.numPlayers) && save.numPlayers >= 2 && save.numPlayers <= 6 &&
+    Array.isArray(save.players) && save.players.length >= save.numPlayers &&
+    save.players.slice(0, save.numPlayers).every(pl =>
+      pl && typeof pl.name === 'string' && typeof pl.emoji === 'string' &&
+      Number.isInteger(pl.pos) && pl.pos >= 0 && pl.pos < NUM_SQUARES &&
+      Number.isFinite(pl.score) && typeof pl.defaultLvl === 'string'
+    ) &&
+    Number.isInteger(save.currentPlayer) && save.currentPlayer >= 0 && save.currentPlayer < save.numPlayers &&
+    Number.isInteger(save.currentTurn) && save.currentTurn >= 1 &&
+    Array.isArray(save.log) &&
+    isValidPhaseSave(save.phase, save.numPlayers);
+}
+
+function saveGame() {
+  try {
+    const save = {
+      version: SAVE_VERSION,
+      numPlayers: gs.numPlayers,
+      players: gs.players,
+      currentPlayer: gs.currentPlayer,
+      currentTurn: gs.currentTurn,
+      log: gs.log,
+      phase: {
+        screen: gs.screen,
+        diceVal: gs.diceVal,
+        diceRolled: gs.diceRolled,
+        currentQ: gs.currentQ,
+        selectedLvl: gs.selectedLvl,
+        challengeStarted: gs.challengeStarted,
+        timerStart: gs.timerStart,
+        timerRemain: gs.timerRemain,
+        hintUsed: gs.hintUsed,
+        awardPending: gs.awardPending,
+        awardedTo: gs.awardedTo,
+        awardedPts: gs.awardedPts,
+        awardConfirmed: gs.awardConfirmed,
+        finishingPlayer: gs.finishingPlayer,
+        wildEvent: gs.wildEvent,
+        wildSwapTarget: gs.wildSwapTarget,
+        wildStealTarget: gs.wildStealTarget,
+        animating: gs.animating,
+        animFrame: gs.animFrame,
+        animFrom: gs.animFrom,
+        animTo: gs.animTo,
+        animStep: gs.animStep
+      }
+    };
+    localStorage.setItem('axiom7_save', JSON.stringify(save));
+    gs.savedExists = true;
+  } catch(e) {
+    console.warn('AXIOM-7 could not save this game.', e);
+  }
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem('axiom7_save');
+    if (!raw) return null;
+    const save = JSON.parse(raw);
+    if (!isValidSave(save)) {
+      localStorage.removeItem('axiom7_save');
+      return null;
+    }
+    return save;
+  } catch(e) {
+    localStorage.removeItem('axiom7_save');
+    return null;
+  }
+}
+
+function clearSave() {
+  localStorage.removeItem('axiom7_save');
+  gs.savedExists = false;
+}
+
+function restoreSave(save, p) {
+  gs.numPlayers = save.numPlayers;
+  for (let i = 0; i < save.numPlayers; i++) {
+    gs.players[i] = { ...gs.players[i], ...save.players[i] };
+  }
+  gs.currentPlayer = save.currentPlayer;
+  gs.currentTurn = save.currentTurn;
+  gs.log = save.log;
+  Object.assign(gs, save.phase);
+  initStarfield(p);
+  updateFacPanel();
+
+  if (gs.screen === 'winner') {
+    setSpeech('winner', getWinner().name);
+    spawnConfetti(p);
+  } else if (gs.screen === 'challenge') {
+    setSpeech('challenge', gs.selectedLvl);
+  } else if (gs.screen === 'score') {
+    setSpeech('score', gs.currentQ.a);
+  } else if (gs.screen === 'roll') {
+    setSpeech('roll', gs.players[gs.currentPlayer].name);
+  }
+}
+
+// ── GAME LOGIC ────────────────────────────────────────────────────────────────
+function startNewGame() {
+  const names = gs.players.map(p => p.name);
+  const emojis = gs.players.map(p => p.emoji);
+  const defaults = gs.players.map(p => p.defaultLvl);
+  gs = defaultState();
+  initStarfield(window._p5);
+  gs.savedExists = !!loadSave();
+  for (let i = 0; i < 6; i++) {
+    gs.players[i].name = names[i];
+    gs.players[i].emoji = emojis[i];
+    gs.players[i].defaultLvl = defaults[i];
+  }
+  gs.screen = 'setup';
+  rebuildNameInputs();
+}
+
+function launchGame() {
+  collectNameInputs();
+  clearNameInputs();
+  for (let i = 0; i < gs.numPlayers; i++) {
+    gs.players[i].pos = 0;
+    gs.players[i].score = 0;
+  }
+  gs.currentPlayer = 0;
+  gs.currentTurn = 1;
+  gs.log = [];
+  gs.finishingPlayer = -1;
+  gs.screen = 'roll';
+  setSpeech('roll', gs.players[gs.currentPlayer].name);
+  saveGame();
+}
+
+function doRoll(p) {
+  if (gs.diceRolled || gs.animating) return;
+  gs.diceVal = Math.floor(p.random(1, 7));
+  gs.diceRolled = true;
+  const cp = gs.players[gs.currentPlayer];
+  gs.animFrom = cp.pos;
+  gs.animTo = Math.min(cp.pos + gs.diceVal, NUM_SQUARES - 1);
+  gs.animStep = 0;
+  gs.animating = true;
+  gs.animFrame = 0;
+  saveGame();
+}
+
+function tickAnim() {
+  if (!gs.animating) return;
+  gs.animFrame++;
+  if (gs.animFrame % 10 === 0) {
+    const cp = gs.players[gs.currentPlayer];
+    if (cp.pos < gs.animTo) {
+      cp.pos++;
+      gs.animStep++;
+    }
+    if (cp.pos >= gs.animTo) {
+      gs.animating = false;
+      afterMove();
+    }
+  }
+}
+
+function afterMove() {
+  const cp = gs.players[gs.currentPlayer];
+  if (cp.pos >= NUM_SQUARES - 1) {
+    gs.finishingPlayer = gs.currentPlayer;
+    gs.screen = 'winner';
+    setSpeech('winner', cp.name);
+    saveGame();
+    spawnConfetti(window._p5);
+    return;
+  }
+  const type = SQ_TYPES[cp.pos];
+  if (type === 'start') {
+    nextTurn();
+    return;
+  }
+  if (type === 'wild') {
+    gs.wildEvent = WILD_EVENTS[Math.floor(Math.random() * WILD_EVENTS.length)];
+    gs.screen = 'wild';
+    gs.wildSwapTarget = -1;
+    gs.wildStealTarget = -1;
+    saveGame();
+    return;
+  }
+  loadChallenge();
+  gs.screen = 'challenge';
+  setSpeech('challenge', gs.players[gs.currentPlayer].defaultLvl);
+  saveGame();
+}
+
+function loadChallenge() {
+  const cp = gs.players[gs.currentPlayer];
+  const type = SQ_TYPES[cp.pos];
+  const lvl = gs.selectedLvl || cp.defaultLvl;
+  gs.selectedLvl = lvl;
+  const bank = QUESTION_BANK[type]?.[lvl] || QUESTION_BANK.nova.beginner;
+  gs.currentQ = bank[Math.floor(Math.random() * bank.length)];
+  gs.challengeStarted = false;
+  gs.timerRemain = TIMER_DEFAULT[lvl];
+  gs.hintUsed = false;
+  gs.awardPending = true;
+  gs.awardedTo = -1;
+  gs.awardedPts = 0;
+  gs.awardConfirmed = false;
+  updateFacPanel();
+}
+
+function startTimer() {
+  gs.challengeStarted = true;
+  gs.timerStart = Date.now();
+  saveGame();
+}
+
+function tickTimer() {
+  if (!gs.challengeStarted || gs.screen !== 'challenge') return;
+  const lvl = gs.selectedLvl || 'beginner';
+  const total = TIMER_DEFAULT[lvl] * 1000;
+  const elapsed = Date.now() - gs.timerStart;
+  gs.timerRemain = Math.max(0, ((total - elapsed) / 1000));
+  if (gs.timerRemain <= 0) {
+    gs.screen = 'score';
+    gs.challengeStarted = false;
+    gs.awardedTo = -1;
+    gs.awardedPts = 0;
+    setSpeech('score', gs.currentQ?.a || '');
+    updateFacPanel();
+    saveGame();
+  }
+}
+
+function goToScore() {
+  gs.screen = 'score';
+  gs.challengeStarted = false;
+  gs.awardPending = true;
+  gs.awardedTo = -1;
+  gs.awardedPts = 0;
+  gs.awardConfirmed = false;
+  setSpeech('score', gs.currentQ?.a || '');
+  updateFacPanel();
+  saveGame();
+}
+
+function getAwardPoints() {
+  const lvl = LEVELS.find(l => l.id === (gs.selectedLvl || 'beginner')) || LEVELS[1];
+  return Math.max(0, lvl.pts - (gs.hintUsed ? 1 : 0));
+}
+
+function selectChallengeLevel(level) {
+  if (gs.screen !== 'challenge' || gs.challengeStarted) return;
+  gs.selectedLvl = level;
+  loadChallenge();
+  saveGame();
+}
+
+function skipAward() {
+  if (gs.screen !== 'score' || gs.awardConfirmed) return;
+  gs.awardedTo = -1;
+  gs.awardedPts = 0;
+  gs.awardConfirmed = true;
+  gs.awardPending = false;
+  gs.log.push({
+    turn: gs.currentTurn,
+    player: gs.players[gs.currentPlayer].name,
+    square: SQ_LABELS[gs.players[gs.currentPlayer].pos],
+    level: gs.selectedLvl,
+    pts: 0,
+    awardedTo: '—',
+    ts: new Date().toLocaleTimeString()
+  });
+  saveGame();
+}
+
+function awardPoints(playerIdx, pts) {
+  if (gs.screen !== 'score' || gs.awardConfirmed) return;
+  gs.awardedTo = playerIdx;
+  gs.awardedPts = pts;
+  gs.players[playerIdx].score = Math.max(0, gs.players[playerIdx].score + pts);
+  gs.awardConfirmed = true;
+  gs.awardPending = false;
+  gs.log.push({
+    turn: gs.currentTurn,
+    player: gs.players[gs.currentPlayer].name,
+    square: SQ_LABELS[gs.players[gs.currentPlayer].pos],
+    level: gs.selectedLvl,
+    pts: pts,
+    awardedTo: gs.players[playerIdx].name,
+    ts: new Date().toLocaleTimeString()
+  });
+  spawnPtsAnim(window._p5, playerIdx, pts);
+  saveGame();
+}
+
+function nextTurn() {
+  gs.currentPlayer = (gs.currentPlayer + 1) % gs.numPlayers;
+  gs.currentTurn++;
+  gs.diceRolled = false;
+  gs.diceVal = 0;
+  gs.selectedLvl = gs.players[gs.currentPlayer].defaultLvl;
+  gs.currentQ = null;
+  gs.challengeStarted = false;
+  gs.awardPending = true;
+  gs.awardedTo = -1;
+  gs.awardedPts = 0;
+  gs.awardConfirmed = false;
+  gs.finishingPlayer = -1;
+  gs.wildEvent = null;
+  gs.screen = 'roll';
+  setSpeech('roll', gs.players[gs.currentPlayer].name);
+  saveGame();
+}
+
+// ── WILD ACTIONS ──────────────────────────────────────────────────────────────
+function wildSwapWith(idx) {
+  const cp = gs.players[gs.currentPlayer];
+  const tp = gs.players[idx];
+  [cp.pos, tp.pos] = [tp.pos, cp.pos];
+  gs.log.push({ turn:gs.currentTurn, player:cp.name, square:'WORMHOLE', level:'-', pts:0, awardedTo:tp.name, ts:new Date().toLocaleTimeString() });
+  nextTurn();
+}
+
+function wildStealFrom(idx) {
+  const cp = gs.players[gs.currentPlayer];
+  const tp = gs.players[idx];
+  if (tp.score > 0) { tp.score--; cp.score++; }
+  gs.log.push({ turn:gs.currentTurn, player:cp.name, square:'HEIST', level:'-', pts:1, awardedTo:cp.name, ts:new Date().toLocaleTimeString() });
+  nextTurn();
+}
+
+// ── SPEECH BUBBLES ────────────────────────────────────────────────────────────
+function setSpeech(ctx, arg) {
+  const lines = SPEECH_LINES[ctx]?.(arg) || [];
+  gs.speechText = lines[Math.floor(Math.random() * lines.length)] || '';
+  gs.speechAlpha = 0;
+  gs.speechTimer = 300;
+}
+
+function tickSpeech() {
+  if (gs.speechTimer > 0) {
+    gs.speechTimer--;
+    if (gs.speechAlpha < 255) gs.speechAlpha = Math.min(255, gs.speechAlpha + 8);
+  } else {
+    if (gs.speechAlpha > 0) gs.speechAlpha = Math.max(0, gs.speechAlpha - 4);
+  }
+}
+
+// ── SCORE ANIMATION ───────────────────────────────────────────────────────────
+function spawnPtsAnim(p, playerIdx, pts) {
+  const col = PLAYER_COLS[playerIdx % PLAYER_COLS.length];
+  gs.scoreAnimPts.push({ pts, col, alpha: 255, y: H - 80, vy: -1.5, life: 90 });
+}
+
+function tickScoreAnims() {
+  gs.scoreAnimPts = gs.scoreAnimPts.filter(a => a.life > 0);
+  for (const a of gs.scoreAnimPts) { a.y += a.vy; a.alpha = Math.max(0, a.alpha - 3); a.life--; }
+}
+
+// ── CONFETTI ──────────────────────────────────────────────────────────────────
+function spawnConfetti(p) {
+  gs.confetti = Array.from({length:60}, () => ({
+    x: p.random(W), y: p.random(-50, 0),
+    r: p.random(5,12), col: [p.random(50,255), p.random(50,255), p.random(50,255)],
+    vy: p.random(2,5), vx: p.random(-2,2), life: 200
+  }));
+}
+
+function tickConfetti() {
+  gs.confetti = gs.confetti.filter(c => c.life > 0);
+  for (const c of gs.confetti) { c.x += c.vx; c.y += c.vy; c.life--; }
+}
+
+// ── FACILITATOR ───────────────────────────────────────────────────────────────
+let facTarget = 0;
+function updateFacPanel() {
+  const qi = document.getElementById('fac-q');
+  const ai = document.getElementById('fac-a');
+  const hi = document.getElementById('fac-h');
+  if (qi) qi.textContent = gs.currentQ?.q || '—';
+  if (ai) ai.textContent = gs.currentQ?.a || '—';
+  if (hi) hi.textContent = gs.currentQ?.hint || '—';
+  const ab = document.getElementById('fac-award-btns');
+  if (ab) {
+    ab.innerHTML = '';
+    for (let i = 0; i < gs.numPlayers; i++) {
+      const b = document.createElement('button');
+      b.textContent = gs.players[i].emoji + ' ' + gs.players[i].name.substring(0,6);
+      b.onclick = () => { facTarget = i; };
+      ab.appendChild(b);
+    }
+  }
+}
+function facAward(pts) { if (gs.screen === 'score') awardPoints(facTarget, pts); }
+function facMovePlayer() {
+  const sq = parseInt(document.getElementById('fac-sq')?.value || '0');
+  if (sq >= 0 && sq < NUM_SQUARES) {
+    gs.players[gs.currentPlayer].pos = sq;
+    saveGame();
+  }
+}
+function facNextTurn() { nextTurn(); }
+
+let facVisible = false;
+document.getElementById('fac-toggle').addEventListener('click', () => {
+  facVisible = !facVisible;
+  document.getElementById('facilitator-panel').classList.toggle('visible', facVisible);
+  document.getElementById('fac-toggle').textContent = facVisible ? '🔓' : '🔒';
+});
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function getWinner() {
+  if (Number.isInteger(gs.finishingPlayer) && gs.finishingPlayer >= 0 && gs.finishingPlayer < gs.numPlayers) {
+    return gs.players[gs.finishingPlayer];
+  }
+  return [...gs.players.slice(0, gs.numPlayers)].sort((a,b) => b.score - a.score)[0];
+}
+
+function exportResults() {
+  const data = {
+    date: new Date().toLocaleDateString(),
+    players: gs.players.slice(0,gs.numPlayers).map(p=>({name:p.name,emoji:p.emoji,score:p.score})),
+    winner: getWinner(),
+    log: gs.log
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `axiom7-results-${data.date.replace(/\//g,'-')}.json`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function copyTextSummary() {
+  const winner = getWinner();
+  let txt = `AXIOM-7 Game — ${new Date().toLocaleDateString()}\n`;
+  txt += `Winner: ${winner.emoji} ${winner.name} with ${winner.score} pts\n\nScores:\n`;
+  gs.players.slice(0,gs.numPlayers).sort((a,b)=>b.score-a.score)
+    .forEach(p => { txt += `  ${p.emoji} ${p.name}: ${p.score} pts\n`; });
+  txt += '\nGame Log:\n';
+  gs.log.forEach(e => { txt += `  Turn ${e.turn}: ${e.player} → ${e.square} [${e.level}] → ${e.awardedTo} +${e.pts}pts\n`; });
+  navigator.clipboard?.writeText(txt).catch(()=>{});
+}
+
+// ── NAME INPUTS ───────────────────────────────────────────────────────────────
+let nameInputEls = [];
+function rebuildNameInputs() {
+  clearNameInputs();
+  if (gs.screen !== 'setup') return;
+  const container = document.getElementById('name-inputs');
+  const canvasEl = document.querySelector('canvas');
+  if (!canvasEl) return;
+  const rect = canvasEl.getBoundingClientRect();
+  const scale = rect.width / W;
+
+  for (let i = 0; i < gs.numPlayers; i++) {
+    const ry = 190 + i * 50;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = `Player ${i+1}`;
+    input.value = gs.players[i].name === `Player ${i+1}` ? '' : gs.players[i].name;
+    input.maxLength = 16;
+    input.style.left = (rect.left + 90 * scale) + 'px';
+    input.style.top  = (rect.top + (ry + 10) * scale) + 'px';
+    input.style.width  = (160 * scale) + 'px';
+    input.style.height = (26 * scale) + 'px';
+    input.style.fontSize = (11 * scale) + 'px';
+    const idx = i;
+    input.addEventListener('input', () => { gs.players[idx].name = input.value || `Player ${idx+1}`; });
+    container.appendChild(input);
+    nameInputEls.push(input);
+  }
+}
+
+function clearNameInputs() {
+  nameInputEls.forEach(el => el.remove());
+  nameInputEls = [];
+}
+
+function repositionNameInputs() {
+  if (gs.screen !== 'setup' || !nameInputEls.length) return;
+  const canvasEl = document.querySelector('canvas');
+  if (!canvasEl) return;
+  const rect = canvasEl.getBoundingClientRect();
+  const scale = rect.width / W;
+  nameInputEls.forEach((input, i) => {
+    const ry = 190 + i * 50;
+    input.style.left = (rect.left + 90 * scale) + 'px';
+    input.style.top = (rect.top + (ry + 10) * scale) + 'px';
+    input.style.width = (160 * scale) + 'px';
+    input.style.height = (26 * scale) + 'px';
+    input.style.fontSize = Math.max(11, 11 * scale) + 'px';
+  });
+}
+window.addEventListener('resize', repositionNameInputs);
+
+function collectNameInputs() {
+  nameInputEls.forEach((el, i) => {
+    gs.players[i].name = el.value.trim() || `Player ${i+1}`;
+  });
+}
+
+// ── UI PRIMITIVES ─────────────────────────────────────────────────────────────
+function drawBg(p) {
+  p.background(10,10,30);
+  gs.driftX = (gs.driftX + 0.05) % W;
+  // Nebulae
+  for (const n of gs.nebulae) {
+    p.noStroke();
+    for (let layer = 3; layer >= 1; layer--) {
+      p.fill(n.col[0], n.col[1], n.col[2], n.a * 255 / layer);
+      p.ellipse((n.x + gs.driftX * 0.02) % W, n.y, n.rx * layer * 0.6, n.ry * layer * 0.6);
+    }
+  }
+  // Stars
+  for (const s of gs.stars) {
+    const twinkle = 0.5 + 0.5 * Math.sin(Date.now() * s.speed + s.phase);
+    p.fill(255, 255, 255, s.a * twinkle * 220);
+    p.noStroke();
+    const sx = (s.x + gs.driftX * 0.05) % W;
+    p.ellipse(sx, s.y, s.r, s.r);
+  }
+}
+
+function drawGlowRect(p, x, y, w, h, r, col, glowStr=0) {
+  if (glowStr > 0) {
+    p.drawingContext.shadowBlur = glowStr;
+    p.drawingContext.shadowColor = `rgba(${col[0]},${col[1]},${col[2]},0.7)`;
+  }
+  // gradient fill
+  const grad = p.drawingContext.createLinearGradient(x, y, x, y+h);
+  grad.addColorStop(0, `rgba(${col[0]+20},${col[1]+20},${col[2]+20},0.18)`);
+  grad.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0.08)`);
+  p.drawingContext.fillStyle = grad;
+  p.strokeWeight(1);
+  p.stroke(col[0], col[1], col[2], 120);
+  p.rect(x, y, w, h, r);
+  p.drawingContext.shadowBlur = 0;
+  p.noFill();
+}
+
+function drawButton(p, x, y, w, h, label, col, hovered, pressed) {
+  const bcol = hovered
+    ? [Math.min(255,col[0]+40),Math.min(255,col[1]+40),Math.min(255,col[2]+40)]
+    : col;
+  const alpha = pressed ? 0.5 : hovered ? 0.85 : 0.7;
+  p.drawingContext.shadowBlur = hovered ? 12 : 0;
+  p.drawingContext.shadowColor = `rgba(${col[0]},${col[1]},${col[2]},0.6)`;
+
+  const grad = p.drawingContext.createLinearGradient(x, y, x, y+h);
+  grad.addColorStop(0, `rgba(${bcol[0]},${bcol[1]},${bcol[2]},${alpha+0.1})`);
+  grad.addColorStop(1, `rgba(${Math.max(0,bcol[0]-30)},${Math.max(0,bcol[1]-30)},${Math.max(0,bcol[2]-30)},${alpha})`);
+  p.drawingContext.fillStyle = grad;
+  p.strokeWeight(1);
+  p.stroke(bcol[0], bcol[1], bcol[2], 200);
+  p.rect(x, y, w, h, 5);
+  // top highlight
+  p.stroke(255,255,255, pressed ? 20 : 40);
+  p.strokeWeight(1);
+  p.line(x+4, y+1, x+w-4, y+1);
+
+  p.drawingContext.shadowBlur = 0;
+  p.fill(255);
+  p.noStroke();
+  p.textAlign(p.CENTER, p.CENTER);
+  p.textSize(10);
+  p.textFont("system-ui");
+  p.text(label, x+w/2, y+h/2);
+}
+
+function isHover(p, x, y, w, h) { return p.mouseX>=x && p.mouseX<=x+w && p.mouseY>=y && p.mouseY<=y+h; }
+
+function drawTopBar(p) {
+  if (gs.screen === 'setup' || gs.screen === 'splash' || gs.screen === 'winner') return;
+  const cp = gs.players[gs.currentPlayer];
+  p.fill(0, 0, 0, 120);
+  p.noStroke();
+  p.rect(0, 0, W, 22);
+  p.fill(180,210,255);
+  p.textAlign(p.LEFT, p.CENTER);
+  p.textSize(9);
+  p.textFont("system-ui");
+  p.text(`${cp.emoji} ${cp.name}   TURN ${gs.currentTurn}`, 10, 11);
+  p.textAlign(p.RIGHT, p.CENTER);
+  p.text(`SQ ${cp.pos+1}/20`, W-10, 11);
+}
+
+function drawScoreBar(p) {
+  const n = gs.numPlayers;
+  const sw = (W - 20) / n;
+  for (let i = 0; i < n; i++) {
+    const pl = gs.players[i];
+    const x = 10 + i * sw;
+    const y = H - 38;
+    const col = PLAYER_COLS[i % PLAYER_COLS.length];
+    p.fill(0,0,0,100);
+    p.stroke(col);
+    p.strokeWeight(i === gs.currentPlayer ? 2 : 1);
+    p.rect(x, y, sw-4, 32, 3);
+    p.noStroke();
+    p.fill(col);
+    p.textAlign(p.CENTER, p.TOP);
+    p.textFont("system-ui");
+    p.textSize(8);
+    p.text(`${pl.emoji} ${pl.name.substring(0,7)}`, x+sw/2-2, y+3);
+    p.textSize(11);
+    p.fill(255);
+    p.text(pl.score + ' pts', x+sw/2-2, y+16);
+  }
+}
+
+function drawBoardMiniCompact(p, cx, cy, cw, ch) {
+  p.fill(0,0,0,160);
+  p.stroke(50,80,120);
+  p.strokeWeight(1);
+  p.rect(cx, cy, cw, ch, 4);
+
+  const cols = 5, rows = 4;
+  const sqW = (cw-14)/cols, sqH = (ch-14)/rows;
+
+  for (let i = 0; i < NUM_SQUARES; i++) {
+    const pos = getBoardPos(i);
+    const bx = cx + 7 + (pos.x - BOARD_MARGIN) / (W - BOARD_MARGIN*2 - SQ_W) * (cw-14-sqW);
+    const by = cy + 7 + (pos.y - BOARD_MARGIN - 20) / (3 * (SQ_H + BOARD_ROW_GAP)) * (ch-14-sqH);
+    const type = SQ_TYPES[i];
+    const col = SQ_COLS[type] || [80,80,80];
+
+    const active = gs.players.slice(0,gs.numPlayers).some(pl => pl.pos === i);
+    const glow = active ? 10 : 0;
+    if (glow) { p.drawingContext.shadowBlur=glow; p.drawingContext.shadowColor=`rgb(${col[0]},${col[1]},${col[2]})`; }
+    p.fill(col[0],col[1],col[2], active?200:80);
+    p.noStroke();
+    p.rect(bx, by, sqW, sqH, 2);
+    p.drawingContext.shadowBlur=0;
+
+    for (let j = 0; j < gs.numPlayers; j++) {
+      if (gs.players[j].pos === i) {
+        const pcol = PLAYER_COLS[j % PLAYER_COLS.length];
+        p.fill(pcol);
+        p.ellipse(bx+sqW/2 + (j-1)*4, by+sqH/2, 5, 5);
+      }
+    }
+  }
+}
+
+function drawSpeechBubble(p) {
+  if (gs.speechAlpha <= 0 || !gs.speechText) return;
+  const type = SQ_TYPES[gs.players[gs.currentPlayer].pos];
+  const card = CHARACTER_CARDS[type] || CHARACTER_CARDS.nova;
+  const bx=10, by=H-100, bw=230, bh=56;
+  p.fill(10,20,40, gs.speechAlpha*0.9);
+  p.stroke(card.col[0], card.col[1], card.col[2], gs.speechAlpha);
+  p.strokeWeight(1);
+  p.rect(bx, by, bw, bh, 6);
+  // tail
+  p.noStroke();
+  p.fill(10,20,40, gs.speechAlpha*0.9);
+  p.triangle(bx+20,by+bh, bx+10,by+bh+10, bx+35,by+bh);
+
+  p.fill(200,220,255,gs.speechAlpha);
+  p.noStroke();
+  p.textFont("monospace");
+  p.textSize(9);
+  p.textAlign(p.LEFT, p.TOP);
+  p.textWrap(p.WORD);
+  p.text(`${card.emoji} ${gs.speechText}`, bx+8, by+8, bw-16, bh-16);
+}
+
+function drawScoreAnims(p) {
+  for (const a of gs.scoreAnimPts) {
+    p.fill(a.col || '#fff');
+    p.textFont("system-ui");
+    p.textSize(16);
+    p.textAlign(p.CENTER);
+    p.fill(255,255,100,a.alpha);
+    p.text(`+${a.pts}`, W/2, a.y);
+  }
+}
+
+function drawConfetti(p) {
+  for (const c of gs.confetti) {
+    p.fill(c.col[0],c.col[1],c.col[2]);
+    p.noStroke();
+    p.ellipse(c.x, c.y, c.r, c.r);
+  }
+}
+
+function drawKeyHints(p, hints) {
+  p.fill(40,60,80,160);
+  p.noStroke();
+  const totalW = hints.reduce((a,h)=>a+p.textWidth(h)+14,0);
+  let hx = W/2 - totalW/2;
+  const hy = H-50;
+  p.textFont("monospace");
+  p.textSize(8);
+  for (const h of hints) {
+    const hw = p.textWidth(h)+14;
+    p.fill(30,50,80,180);
+    p.rect(hx, hy, hw, 14, 3);
+    p.fill(150,190,220);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.text(h, hx+7, hy+7);
+    hx += hw + 4;
+  }
+}
+
+// ── BOARD FULL ────────────────────────────────────────────────────────────────
+function drawBoardFull(p) {
+  const t = Date.now() / 1000;
+  // Draw path arrows
+  p.stroke(60,90,120,80);
+  p.strokeWeight(1);
+  p.noFill();
+  for (let i = 0; i < NUM_SQUARES-1; i++) {
+    const a = getBoardPos(i), b = getBoardPos(i+1);
+    const ax = a.x+SQ_W/2, ay = a.y+SQ_H/2, bx = b.x+SQ_W/2, by = b.y+SQ_H/2;
+    p.line(ax,ay,bx,by);
+  }
+
+  for (let i = 0; i < NUM_SQUARES; i++) {
+    const pos = getBoardPos(i);
+    const type = SQ_TYPES[i];
+    const col = SQ_COLS[type] || [80,80,80];
+    const isActive = gs.players.slice(0,gs.numPlayers).some(pl=>pl.pos===i);
+    const pulse = isActive ? 8 + 4*Math.sin(t*3) : 0;
+
+    if (pulse>0) {
+      p.drawingContext.shadowBlur = pulse*2;
+      p.drawingContext.shadowColor = `rgba(${col[0]},${col[1]},${col[2]},0.9)`;
+    }
+    // Gradient fill
+    const grad = p.drawingContext.createLinearGradient(pos.x, pos.y, pos.x, pos.y+SQ_H);
+    grad.addColorStop(0, `rgba(${col[0]+20},${col[1]+20},${col[2]+20},0.3)`);
+    grad.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0.12)`);
+    p.drawingContext.fillStyle = grad;
+    p.stroke(col[0],col[1],col[2], isActive?220:100);
+    p.strokeWeight(isActive?2:1);
+    // inner highlight
+    p.rect(pos.x, pos.y, SQ_W, SQ_H, 8);
+    p.drawingContext.shadowBlur=0;
+    // inner top highlight
+    p.stroke(255,255,255,20);
+    p.strokeWeight(1);
+    p.line(pos.x+6,pos.y+1,pos.x+SQ_W-6,pos.y+1);
+
+    // Square number
+    p.fill(col[0],col[1],col[2],180);
+    p.noStroke();
+    p.textFont("system-ui");
+    p.textSize(7);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(i+1, pos.x+4, pos.y+3);
+
+    // Crew emoji
+    p.textSize(18);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.text(SQ_CREW[i], pos.x+SQ_W/2, pos.y+SQ_H/2 - 10);
+
+    // Label
+    p.fill(200,220,255, isActive?255:160);
+    p.textSize(6.5);
+    p.textFont("system-ui");
+    p.textAlign(p.CENTER, p.BOTTOM);
+    const lbl = SQ_LABELS[i].length > 14 ? SQ_LABELS[i].substring(0,13)+'…' : SQ_LABELS[i];
+    p.text(lbl, pos.x+SQ_W/2, pos.y+SQ_H-4);
+
+    // Player tokens
+    let tokenIdx = 0;
+    for (let j=0;j<gs.numPlayers;j++) {
+      if (gs.players[j].pos===i) {
+        const pcol = PLAYER_COLS[j%PLAYER_COLS.length];
+        p.fill(pcol);
+        p.stroke(255,255,255,120);
+        p.strokeWeight(1);
+        p.ellipse(pos.x+SQ_W/2-8+tokenIdx*10, pos.y+SQ_H/2+10, 10, 10);
+        p.noStroke();
+        p.fill(255);
+        p.textSize(7);
+        p.textAlign(p.CENTER,p.CENTER);
+        p.text(gs.players[j].emoji, pos.x+SQ_W/2-8+tokenIdx*10, pos.y+SQ_H/2+10);
+        tokenIdx++;
+      }
+    }
+  }
+}
+
+// ── CHARACTER CARD SIDEBAR ────────────────────────────────────────────────────
+function drawCharCard(p, type) {
+  const card = CHARACTER_CARDS[type] || CHARACTER_CARDS.nova;
+  const col = card.col;
+  const x = W-150, y = 30, w = 140, h = 110;
+  p.fill(0,0,0,160);
+  p.stroke(col[0],col[1],col[2],120);
+  p.strokeWeight(1);
+  p.rect(x, y, w, h, 6);
+  // accent bar
+  p.fill(col[0],col[1],col[2],200);
+  p.noStroke();
+  p.rect(x, y, 4, h, 6, 0, 0, 6);
+  // Avatar
+  p.drawingContext.shadowBlur=14;
+  p.drawingContext.shadowColor=`rgba(${col[0]},${col[1]},${col[2]},0.8)`;
+  p.fill(col[0],col[1],col[2],60);
+  p.stroke(col[0],col[1],col[2],180);
+  p.strokeWeight(1);
+  p.ellipse(x+28, y+30, 36, 36);
+  p.drawingContext.shadowBlur=0;
+  p.noStroke();
+  p.textSize(16);
+  p.textAlign(p.CENTER,p.CENTER);
+  p.text(card.emoji, x+28, y+30);
+  // Name
+  p.fill(col[0],col[1],col[2]);
+  p.textFont("system-ui");
+  p.textSize(8);
+  p.textAlign(p.LEFT, p.TOP);
+  p.text(card.name, x+52, y+8);
+  // Role
+  p.fill(160,190,220);
+  p.textFont("monospace");
+  p.textSize(7);
+  p.text(card.role, x+52, y+20, w-58, 30);
+  // Personality pill
+  p.fill(col[0],col[1],col[2],80);
+  p.noStroke();
+  p.rect(x+8, y+52, p.textWidth(card.personality)+10, 13, 6);
+  p.fill(col[0],col[1],col[2]);
+  p.textFont("monospace");
+  p.textSize(7);
+  p.textAlign(p.LEFT,p.CENTER);
+  p.text(card.personality, x+13, y+58);
+  // Catchphrase
+  p.fill(180,200,230,200);
+  p.textFont("monospace");
+  p.textSize(7);
+  p.textStyle(p.ITALIC);
+  p.text(card.catchphrase, x+8, y+72, w-14, 36);
+  p.textStyle(p.NORMAL);
+}
+
+// ── SCREENS ───────────────────────────────────────────────────────────────────
+function drawSplash(p) {
+  drawBg(p);
+  p.drawingContext.shadowBlur = 30;
+  p.drawingContext.shadowColor = 'rgba(80,140,255,0.8)';
+  p.fill(100,160,255);
+  p.textFont("system-ui");
+  p.textSize(42);
+  p.textAlign(p.CENTER, p.CENTER);
+  p.text('AXIOM-7', W/2, H/2-80);
+  p.drawingContext.shadowBlur=0;
+
+  p.fill(160,200,255,200);
+  p.textSize(10);
+  p.text('INTERGALACTIC AI LEARNING EXPEDITION', W/2, H/2-42);
+
+  p.fill(80,120,180,60);
+  p.noStroke();
+  p.rect(W/2-160, H/2-20, 320, 2);
+
+  const hasS = gs.savedExists;
+
+  // New game button
+  const nhov = isHover(p, W/2-100, H/2+10, 200, 36);
+  drawButton(p, W/2-100, H/2+10, 200, 36, 'NEW GAME', [55,138,221], nhov, p.mouseIsPressed && nhov);
+
+  if (hasS) {
+    const shov = isHover(p, W/2-100, H/2+56, 200, 36);
+    drawButton(p, W/2-100, H/2+56, 200, 36, 'CONTINUE GAME', [55,200,100], shov, p.mouseIsPressed && shov);
+
+    const save = loadSave();
+    if (save) {
+      p.fill(100,150,200,180);
+      p.textFont("monospace");
+      p.textSize(8);
+      p.textAlign(p.CENTER);
+      const names = save.players.slice(0,save.numPlayers).map(pl=>pl.emoji+pl.name).join(' ');
+      p.text(`${names} | Turn ${save.currentTurn}`, W/2, H/2+100);
+    }
+  }
+
+  p.fill(60,100,140);
+  p.textFont("monospace");
+  p.textSize(7);
+  p.textAlign(p.CENTER, p.BOTTOM);
+  p.text('A board game for 2–6 players • AI/CS learning for ages 10–16', W/2, H-14);
+}
+
+function drawSetup(p) {
+  drawBg(p);
+  drawGlowRect(p, 20, 24, W-40, H-48, 8, [55,100,200], 0);
+
+  p.fill(120,180,255);
+  p.textFont("system-ui");
+  p.textSize(14);
+  p.textAlign(p.CENTER, p.TOP);
+  p.drawingContext.shadowBlur=10;
+  p.drawingContext.shadowColor='rgba(80,140,255,0.6)';
+  p.text('MISSION BRIEFING', W/2, 36);
+  p.drawingContext.shadowBlur=0;
+
+  // Player count
+  p.fill(160,200,255);
+  p.textFont("system-ui");
+  p.textSize(9);
+  p.textAlign(p.LEFT, p.CENTER);
+  p.text('CREW SIZE:', 40, 85);
+  for (let n=2; n<=6; n++) {
+    const bx=120+(n-2)*52, by=72, bw=46, bh=22;
+    const sel = gs.numPlayers===n;
+    const hov = isHover(p,bx,by,bw,bh);
+    const col = sel ? [55,200,100] : [55,80,140];
+    drawButton(p,bx,by,bw,bh,String(n),col,hov||sel,p.mouseIsPressed&&hov);
+  }
+
+  // Players
+  for (let i=0; i<gs.numPlayers; i++) {
+    const pl = gs.players[i];
+    const ry = 190+i*50;
+    const pcol = PLAYER_COLS[i%PLAYER_COLS.length];
+
+    p.fill(0,0,0,80);
+    p.noStroke();
+    p.rect(34, ry, W-68, 40, 4);
+    p.stroke(pcol); p.strokeWeight(1);
+    p.rect(34, ry, 4, 40, 4, 0, 0, 4);
+
+    // Emoji picker
+    for (let e=0; e<EMOJIS.length; e++) {
+      const ex=44+e*26, ey=ry+20;
+      const sel=pl.emoji===EMOJIS[e];
+      const taken=gs.players.slice(0,gs.numPlayers).some((q,qi)=>qi!==i&&q.emoji===EMOJIS[e]);
+      p.fill(sel?pcol:'transparent');
+      if (sel) { p.drawingContext.shadowBlur=8; p.drawingContext.shadowColor=pcol; }
+      p.stroke(sel?pcol:taken?'#1a2a3a':'#2a4a7a');
+      p.strokeWeight(1);
+      p.circle(ex, ey, 22);
+      p.drawingContext.shadowBlur=0;
+      p.noStroke();
+      p.fill(taken&&!sel?'rgba(255,255,255,0.2)':'white');
+      p.textSize(12);
+      p.textAlign(p.CENTER,p.CENTER);
+      p.text(EMOJIS[e], ex, ey);
+    }
+
+    // Name label placeholder (actual input via DOM)
+    p.fill(40,70,100);
+    p.noStroke();
+    p.rect(84, ry+10, 170, 26, 3);
+
+    // Default level picker
+    p.fill(140,170,200);
+    p.textFont("system-ui");
+    p.textSize(7);
+    p.textAlign(p.LEFT,p.CENTER);
+    p.text('DEFAULT LVL:', 270, ry+14);
+    for (let l=0; l<LEVELS.length; l++) {
+      const lv=LEVELS[l];
+      const lx=270+85+l*52, ly=ry+4, lw=50, lh=18;
+      const sel2=pl.defaultLvl===lv.id;
+      const lhov=isHover(p,lx,ly,lw,lh);
+      const lcol=LEVEL_COLS[lv.id];
+      drawButton(p,lx,ly,lw,lh,lv.label.substring(0,5).toUpperCase(),sel2?lcol:[30,50,80],lhov||sel2,false);
+    }
+  }
+
+  // Launch button
+  const lhov=isHover(p,W/2-80, H-80, 160, 36);
+  drawButton(p,W/2-80,H-80,160,36,'LAUNCH MISSION',[55,200,100],lhov,p.mouseIsPressed&&lhov);
+
+  // Clear save
+  if (gs.savedExists) {
+    const chov=isHover(p,W-130,H-80,120,28);
+    drawButton(p,W-130,H-80,120,28,'CLEAR SAVE',[160,60,60],chov,p.mouseIsPressed&&chov);
+  }
+
+  p.fill(80,120,180,150);
+  p.textFont("monospace");
+  p.textSize(8);
+  p.textAlign(p.CENTER,p.BOTTOM);
+  p.text('Click player emoji to select • Type name in box • Set default difficulty per player', W/2, H-10);
+}
+
+function drawRoll(p) {
+  drawBg(p);
+  drawTopBar(p);
+
+  const cp = gs.players[gs.currentPlayer];
+  const type = SQ_TYPES[cp.pos];
+  const col = SQ_COLS[type] || [55,138,221];
+
+  // Board mini
+  drawBoardMiniCompact(p, W-170, 28, 160, 120);
+
+  // Title
+  p.drawingContext.shadowBlur=16;
+  p.drawingContext.shadowColor=`rgba(${col[0]},${col[1]},${col[2]},0.7)`;
+  p.fill(col[0],col[1],col[2]);
+  p.textFont("system-ui");
+  p.textSize(20);
+  p.textAlign(p.CENTER,p.TOP);
+  p.text(`${cp.emoji} ${cp.name}'s Turn`, W/2-80, 35);
+  p.drawingContext.shadowBlur=0;
+
+  p.fill(140,180,220);
+  p.textSize(9);
+  p.text(`Currently on: ${SQ_LABELS[cp.pos]}`, W/2-80, 62);
+
+  // Dice
+  const dy=200, dx=W/2-80;
+  if (!gs.diceRolled) {
+    const dhov=isHover(p,dx-50,dy-50,100,100);
+    p.drawingContext.shadowBlur = dhov ? 20 : 8;
+    p.drawingContext.shadowColor='rgba(80,140,255,0.6)';
+    p.fill(20,40,80);
+    p.stroke(80,140,255,dhov?220:140);
+    p.strokeWeight(2);
+    p.rect(dx-50,dy-50,100,100,12);
+    p.drawingContext.shadowBlur=0;
+    p.noStroke();
+    p.fill(200,220,255);
+    p.textFont("system-ui");
+    p.textSize(11);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.text('ROLL', dx, dy-10);
+    p.textSize(8);
+    p.fill(120,160,200);
+    p.text('PRESS SPACE', dx, dy+10);
+  } else if (gs.animating) {
+    p.fill(255,220,100);
+    p.textFont("system-ui");
+    p.textSize(40);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.text(gs.diceVal, dx, dy-5);
+    p.fill(140,180,220);
+    p.textSize(9);
+    p.text('MOVING…', dx, dy+34);
+  } else {
+    p.fill(255,220,100);
+    p.textFont("system-ui");
+    p.textSize(40);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.text(gs.diceVal, dx, dy-5);
+    p.fill(140,180,220);
+    p.textSize(9);
+    p.text(`→ ${SQ_LABELS[gs.players[gs.currentPlayer].pos]}`, dx, dy+34);
+    const chov=isHover(p,dx-70,dy+56,140,32);
+    drawButton(p,dx-70,dy+56,140,32,'LOAD CHALLENGE',col,chov,p.mouseIsPressed&&chov);
+  }
+
+  drawScoreBar(p);
+  drawSpeechBubble(p);
+  drawScoreAnims(p);
+  drawKeyHints(p,['SPACE: Roll/Continue']);
+}
+
+function drawChallenge(p) {
+  drawBg(p);
+  drawTopBar(p);
+
+  const cp = gs.players[gs.currentPlayer];
+  const type = SQ_TYPES[cp.pos];
+  const col = SQ_COLS[type] || [55,138,221];
+
+  // Character card (the mini-board is omitted here to avoid covering this card).
+  drawCharCard(p, type);
+
+  // Square header
+  p.drawingContext.shadowBlur=12;
+  p.drawingContext.shadowColor=`rgba(${col[0]},${col[1]},${col[2]},0.7)`;
+  p.fill(col[0],col[1],col[2]);
+  p.textFont("system-ui");
+  p.textSize(13);
+  p.textAlign(p.LEFT,p.TOP);
+  p.text(`${SQ_CREW[cp.pos]} ${SQ_LABELS[cp.pos]}`, 14, 30);
+  p.drawingContext.shadowBlur=0;
+
+  // Level picker
+  const lvls=LEVELS;
+  for (let l=0;l<lvls.length;l++) {
+    const lv=lvls[l];
+    const lx=14+l*82, ly=52, lw=80, lh=30;
+    const sel=gs.selectedLvl===lv.id;
+    const lhov=!gs.challengeStarted && isHover(p,lx,ly,lw,lh);
+    const lcol=LEVEL_COLS[lv.id];
+    // accent bar
+    if (sel) {
+      p.fill(lcol[0],lcol[1],lcol[2],200);
+      p.noStroke();
+      p.rect(lx, ly, 4, lh, 3, 0, 0, 3);
+    }
+    drawButton(p,lx+(sel?4:0),ly,lw-(sel?4:0),lh,`${lv.label} +${lv.pts}`,sel?lcol:[40,60,90],lhov||sel,false);
+  }
+
+  // Question card
+  const qy=92, qh=120;
+  p.fill(0,0,0,140);
+  p.stroke(col[0],col[1],col[2],100);
+  p.strokeWeight(1);
+  p.rect(14, qy, W-28, qh, 6);
+
+  if (gs.currentQ) {
+    p.fill(220,235,255);
+    p.textFont("monospace");
+    p.textSize(11);
+    p.textAlign(p.LEFT,p.TOP);
+    p.textWrap(p.WORD);
+    p.noStroke();
+    p.text(gs.currentQ.q, 24, qy+10, W-48, qh-20);
+  }
+
+  // Timer
+  if (!gs.challengeStarted) {
+    const shov=isHover(p,W/2-90,qy+qh+10,180,30);
+    drawButton(p,W/2-90,qy+qh+10,180,30,'▶ START TIMER',col,shov,p.mouseIsPressed&&shov);
+  } else {
+    const lvl=gs.selectedLvl||'beginner';
+    const total=TIMER_DEFAULT[lvl];
+    const frac=Math.max(0,gs.timerRemain/total);
+    const barW=W-28;
+    // Timer bar BG
+    p.fill(30,40,60);
+    p.noStroke();
+    p.rect(14,qy+qh+10,barW,16,4);
+    // Timer bar fill
+    const tcol=gs.timerRemain<10?[220,60,60]:frac>0.5?[60,200,100]:[220,180,60];
+    p.fill(tcol[0],tcol[1],tcol[2]);
+    p.rect(14,qy+qh+10,barW*frac,16,4);
+    p.fill(255);
+    p.textFont("system-ui");
+    p.textSize(9);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.text(`${Math.ceil(gs.timerRemain)}s`, W/2, qy+qh+18);
+  }
+
+  // Hint button
+  if (gs.currentQ?.hint && !gs.hintUsed) {
+    const hhov=isHover(p,14,qy+qh+38,140,24);
+    drawButton(p,14,qy+qh+38,140,24,'💡 HINT (-1pt)',[100,140,80],hhov,false);
+  } else if (gs.hintUsed && gs.currentQ?.hint) {
+    p.fill(100,160,100,180);
+    p.textFont("monospace");
+    p.textSize(9);
+    p.textAlign(p.LEFT,p.TOP);
+    p.textWrap(p.WORD);
+    p.text(`💡 ${gs.currentQ.hint}`, 14, qy+qh+38, 300, 24);
+  }
+
+  // Done button
+  const dhov=isHover(p,W-160,qy+qh+38,146,24);
+  drawButton(p,W-160,qy+qh+38,146,24,'DONE → SCORE',col,dhov,p.mouseIsPressed&&dhov);
+
+  drawScoreBar(p);
+  drawSpeechBubble(p);
+  drawKeyHints(p,['1-4: Select level','ENTER: Done']);
+}
+
+function drawScore(p) {
+  drawBg(p);
+  drawTopBar(p);
+
+  const cp = gs.players[gs.currentPlayer];
+  const type = SQ_TYPES[cp.pos];
+  const col = SQ_COLS[type] || [55,138,221];
+  const lvl = gs.selectedLvl || 'beginner';
+  const lvlDef = LEVELS.find(l=>l.id===lvl) || LEVELS[1];
+
+  // Q&A display
+  p.fill(0,0,0,140);
+  p.stroke(col[0],col[1],col[2],80);
+  p.strokeWeight(1);
+  p.rect(14,28,W-28,90,6);
+
+  p.fill(col[0],col[1],col[2]);
+  p.textFont("system-ui");
+  p.textSize(8);
+  p.textAlign(p.LEFT,p.TOP);
+  p.noStroke();
+  p.text('QUESTION:', 24, 34);
+  p.fill(200,220,255);
+  p.textFont("monospace");
+  p.textSize(9);
+  p.textWrap(p.WORD);
+  p.text(gs.currentQ?.q||'—', 24, 46, W-48, 30);
+
+  p.fill(80,220,120);
+  p.textFont("system-ui");
+  p.textSize(8);
+  p.text('ANSWER:', 24, 78);
+  p.fill(180,255,180);
+  p.textFont("monospace");
+  p.textSize(9);
+  p.textWrap(p.WORD);
+  p.text(gs.currentQ?.a||'—', 24, 90, W-48, 30);
+
+  // Award section
+  p.fill(160,200,255);
+  p.textFont("system-ui");
+  p.textSize(9);
+  p.textAlign(p.CENTER,p.TOP);
+  p.noStroke();
+  p.text(`AWARD ${getAwardPoints()} PTS TO:`, W/2, 126);
+
+  if (!gs.awardConfirmed) {
+    const n=gs.numPlayers;
+    const bw=Math.min(120,(W-30)/n-6);
+    const totalW=n*(bw+6)-6;
+    const startX=(W-totalW)/2;
+    for (let i=0;i<n;i++) {
+      const pl=gs.players[i];
+      const pcol=PLAYER_COLS[i%PLAYER_COLS.length];
+      const bx=startX+i*(bw+6), by=144;
+      const bhov=isHover(p,bx,by,bw,42);
+      const pcolArr=[parseInt(pcol.slice(1,3),16),parseInt(pcol.slice(3,5),16),parseInt(pcol.slice(5,7),16)];
+      drawButton(p,bx,by,bw,42,`${pl.emoji}\n${pl.name.substring(0,8)}`,pcolArr,bhov,false);
+      if (gs.awardedTo===i) {
+        p.stroke(80,255,120);
+        p.strokeWeight(2);
+        p.noFill();
+        p.rect(bx-1,by-1,bw+2,44,6);
+        p.noStroke();
+      }
+    }
+    // Skip / no award
+    const skiphov=isHover(p,W/2-60,196,120,26);
+    drawButton(p,W/2-60,196,120,26,'SKIP (0pts)',[80,80,100],skiphov,false);
+  } else if (gs.awardedTo >= 0) {
+    const winner=gs.players[gs.awardedTo];
+    p.fill(80,255,140);
+    p.textFont("system-ui");
+    p.textSize(12);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.drawingContext.shadowBlur=12;
+    p.drawingContext.shadowColor='rgba(80,255,140,0.6)';
+    p.text(`${winner.emoji} ${winner.name} +${gs.awardedPts} pts!`, W/2, 180);
+    p.drawingContext.shadowBlur=0;
+  } else {
+    p.fill(160,180,210);
+    p.textFont("system-ui");
+    p.textSize(12);
+    p.textAlign(p.CENTER,p.CENTER);
+    p.text('No points awarded.', W/2, 180);
+  }
+
+  // Confirm / Next
+  if (gs.awardedTo>=0 && !gs.awardConfirmed) {
+    const chov=isHover(p,W/2-80,232,160,30);
+    drawButton(p,W/2-80,232,160,30,'CONFIRM AWARD',[55,200,100],chov,p.mouseIsPressed&&chov);
+  }
+
+  if (gs.awardConfirmed) {
+    const nhov=isHover(p,W/2-80,232,160,30);
+    drawButton(p,W/2-80,232,160,30,'NEXT TURN →',[55,138,221],nhov,p.mouseIsPressed&&nhov);
+  }
+
+  drawScoreBar(p);
+  drawSpeechBubble(p);
+  drawScoreAnims(p);
+  drawKeyHints(p,['1-6: Award to player','0: Skip','ENTER: Next turn']);
+}
+
+function drawWild(p) {
+  drawBg(p);
+  drawTopBar(p);
+  const ev=gs.wildEvent;
+  if (!ev) return;
+
+  // Full-screen overlay
+  p.fill(0,0,0,180);
+  p.noStroke();
+  p.rect(0,0,W,H);
+
+  p.drawingContext.shadowBlur=30;
+  p.drawingContext.shadowColor='rgba(200,150,50,0.9)';
+  p.textSize(60);
+  p.textAlign(p.CENTER,p.CENTER);
+  p.text(ev.emoji, W/2, H/2-100);
+  p.drawingContext.shadowBlur=0;
+
+  p.fill(220,180,80);
+  p.textFont("system-ui");
+  p.textSize(22);
+  p.text(ev.name, W/2, H/2-40);
+
+  p.fill(200,220,255);
+  p.textFont("monospace");
+  p.textSize(11);
+  p.textWrap(p.WORD);
+  p.text(ev.text, W/2-200, H/2-10, 400, 60);
+
+  if (ev.type==='swap' || ev.type==='steal') {
+    p.fill(160,200,255);
+    p.textFont("system-ui");
+    p.textSize(9);
+    p.textAlign(p.CENTER,p.TOP);
+    p.noStroke();
+    p.text('CHOOSE A PLAYER:', W/2, H/2+60);
+    const n=gs.numPlayers;
+    const bw=90;
+    const totalW=n*bw+(n-1)*8;
+    const sx=(W-totalW)/2;
+    for (let i=0;i<n;i++) {
+      if (i===gs.currentPlayer) continue;
+      const pl=gs.players[i];
+      const pcol=PLAYER_COLS[i%PLAYER_COLS.length];
+      const bx=sx+i*(bw+8), by=H/2+78;
+      const pcolArr=[parseInt(pcol.slice(1,3),16),parseInt(pcol.slice(3,5),16),parseInt(pcol.slice(5,7),16)];
+      const bhov=isHover(p,bx,by,bw,32);
+      drawButton(p,bx,by,bw,32,`${pl.emoji} ${pl.name.substring(0,6)}`,pcolArr,bhov,false);
+    }
+  } else {
+    const shov=isHover(p,W/2-80,H/2+70,160,32);
+    drawButton(p,W/2-80,H/2+70,160,32,'FACILITATOR AWARDS',[200,150,50],shov,false);
+    const nthov=isHover(p,W/2-60,H/2+112,120,28);
+    drawButton(p,W/2-60,H/2+112,120,28,'NEXT TURN',[80,100,140],nthov,false);
+  }
+
+  const skiphov=isHover(p,W-110,H-52,100,28);
+  drawButton(p,W-110,H-52,100,28,'SKIP',[80,80,100],skiphov,false);
+}
+
+function drawBoard(p) {
+  drawBg(p);
+  drawTopBar(p);
+  drawBoardFull(p);
+  drawScoreBar(p);
+
+  // Back to roll button
+  const bhov=isHover(p,10,H-52,120,28);
+  drawButton(p,10,H-52,120,28,'← ROLL SCREEN',[55,100,180],bhov,p.mouseIsPressed&&bhov);
+}
+
+function drawWinner(p) {
+  drawBg(p);
+  drawConfetti(p);
+
+  const winner=getWinner();
+  const sorted=[winner, ...gs.players.slice(0,gs.numPlayers)
+    .filter(pl=>pl!==winner)
+    .sort((a,b)=>b.score-a.score)];
+
+  p.drawingContext.shadowBlur=40;
+  p.drawingContext.shadowColor='rgba(255,220,80,0.9)';
+  p.textSize(50);
+  p.textAlign(p.CENTER,p.CENTER);
+  p.text('🏆', W/2, 80);
+  p.drawingContext.shadowBlur=0;
+
+  p.fill(255,220,80);
+  p.textFont("system-ui");
+  p.textSize(20);
+  p.textAlign(p.CENTER,p.TOP);
+  p.drawingContext.shadowBlur=14;
+  p.drawingContext.shadowColor='rgba(255,220,80,0.7)';
+  p.text('MISSION COMPLETE!', W/2, 120);
+  p.drawingContext.shadowBlur=0;
+
+  p.fill(200,230,255);
+  p.textSize(12);
+  p.text(`${winner.emoji} ${winner.name} wins with ${winner.score} pts!`, W/2, 148);
+
+  // Score table
+  for (let i=0;i<sorted.length;i++) {
+    const pl=sorted[i];
+    const ry=180+i*38;
+    const pcol=PLAYER_COLS[gs.players.indexOf(pl)%PLAYER_COLS.length];
+    const medal=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'][i];
+    p.fill(0,0,0,100);
+    p.noStroke();
+    p.rect(80,ry,W-160,32,4);
+    p.stroke(pcol);
+    p.strokeWeight(i===0?2:1);
+    p.rect(80,ry,W-160,32,4);
+    p.noStroke();
+    p.fill(255);
+    p.textFont("system-ui");
+    p.textSize(11);
+    p.textAlign(p.LEFT,p.CENTER);
+    p.text(`${medal} ${pl.emoji} ${pl.name}`, 96, ry+16);
+    p.fill(pcol);
+    p.textAlign(p.RIGHT,p.CENTER);
+    p.text(`${pl.score} pts`, W-96, ry+16);
+  }
+
+  // Game log
+  const logY=180+gs.numPlayers*38+10;
+  p.fill(0,0,0,120);
+  p.stroke(40,70,120);
+  p.strokeWeight(1);
+  p.rect(80,logY,W-160,Math.min(gs.log.length*14+12,80),4);
+  p.noStroke();
+  p.fill(100,140,180);
+  p.textFont("monospace");
+  p.textSize(7);
+  p.textAlign(p.LEFT,p.TOP);
+  for (let i=0;i<Math.min(gs.log.length,5);i++) {
+    const e=gs.log[gs.log.length-1-i];
+    p.text(`T${e.turn} ${e.player} → ${e.square} [${e.level}] → ${e.awardedTo} +${e.pts}pt`, 88, logY+6+i*14);
+  }
+
+  // Buttons
+  const nhov=isHover(p,W/2-100,H-80,90,32);
+  drawButton(p,W/2-100,H-80,90,32,'NEW GAME',[55,138,221],nhov,p.mouseIsPressed&&nhov);
+  const ehov=isHover(p,W/2+10,H-80,90,32);
+  drawButton(p,W/2+10,H-80,90,32,'EXPORT',[100,160,80],ehov,p.mouseIsPressed&&ehov);
+  const chov=isHover(p,W/2-40,H-40,80,24);
+  drawButton(p,W/2-40,H-40,80,24,'COPY TEXT',[80,100,140],chov,p.mouseIsPressed&&chov);
+
+  drawSpeechBubble(p);
+  drawKeyHints(p,['R: New game','E: Export']);
+}
+
+// ── INPUT HANDLERS ────────────────────────────────────────────────────────────
+function handleClick(p) {
+  const mx=p.mouseX, my=p.mouseY;
+  const screen=gs.screen;
+
+  if (screen==='splash') {
+    if (isHover(p,W/2-100,H/2+10,200,36)) {
+      gs.screen='setup';
+      gs.numPlayers=2;
+      for(let i=0;i<6;i++){gs.players[i].pos=0;gs.players[i].score=0;}
+      rebuildNameInputs();
+      return;
+    }
+    if (gs.savedExists && isHover(p,W/2-100,H/2+56,200,36)) {
+      const save=loadSave();
+      if (save) {
+        restoreSave(save, p);
+      }
+    }
+    return;
+  }
+
+  if (screen==='setup') {
+    // Player count
+    for (let n=2;n<=6;n++) {
+      const bx=120+(n-2)*52,by=72,bw=46,bh=22;
+      if (isHover(p,bx,by,bw,bh)) {
+        const prev=gs.numPlayers;
+        gs.numPlayers=n;
+        if (n!==prev) rebuildNameInputs();
+        return;
+      }
+    }
+    // Emoji picker
+    for (let i=0;i<gs.numPlayers;i++) {
+      const ry=190+i*50;
+      for (let e=0;e<EMOJIS.length;e++) {
+        const ex=44+e*26, ey=ry+20;
+        const taken=gs.players.slice(0,gs.numPlayers).some((q,qi)=>qi!==i&&q.emoji===EMOJIS[e]);
+        if (!taken && Math.sqrt((mx-ex)**2+(my-ey)**2)<11) {
+          gs.players[i].emoji=EMOJIS[e];
+          return;
+        }
+      }
+      // Default level
+      const lvls=LEVELS;
+      for (let l=0;l<lvls.length;l++) {
+        const lx=270+85+l*52,ly=ry+4,lw=50,lh=18;
+        if (isHover(p,lx,ly,lw,lh)) { gs.players[i].defaultLvl=lvls[l].id; return; }
+      }
+    }
+    // Launch
+    if (isHover(p,W/2-80,H-80,160,36)) { launchGame(); return; }
+    // Clear save
+    if (gs.savedExists && isHover(p,W-130,H-80,120,28)) { clearSave(); return; }
+    return;
+  }
+
+  if (screen==='roll') {
+    if (!gs.diceRolled && !gs.animating) doRoll(p);
+    else if (gs.diceRolled && !gs.animating) {
+      const cp=gs.players[gs.currentPlayer];
+      const dx=W/2-80;
+      if (isHover(p,dx-70,256,140,32)) afterMove();
+    }
+    return;
+  }
+
+  if (screen==='board') {
+    if (isHover(p,10,H-52,120,28)) { gs.screen='roll'; return; }
+    return;
+  }
+
+  if (screen==='challenge') {
+    // Level picker
+    if (!gs.challengeStarted) {
+      for (let l=0;l<LEVELS.length;l++) {
+        const lv=LEVELS[l];
+        const lx=14+l*82,ly=52,lw=80,lh=30;
+        if (isHover(p,lx,ly,lw,lh)) {
+          selectChallengeLevel(lv.id);
+          return;
+        }
+      }
+    }
+    // Start timer
+    if (!gs.challengeStarted && isHover(p,W/2-90,222,180,30)) { startTimer(); return; }
+    // Hint
+    if (!gs.hintUsed && gs.currentQ?.hint && isHover(p,14,230,140,24)) {
+      gs.hintUsed=true;
+      saveGame();
+      return;
+    }
+    // Done
+    if (isHover(p,W-160,230,146,24)) { goToScore(); return; }
+    return;
+  }
+
+  if (screen==='score') {
+    if (!gs.awardConfirmed) {
+      const n=gs.numPlayers;
+      const lvl=gs.selectedLvl||'beginner';
+      const lvlDef=LEVELS.find(l=>l.id===lvl)||LEVELS[1];
+      const bw=Math.min(120,(W-30)/n-6);
+      const totalW=n*(bw+6)-6;
+      const startX=(W-totalW)/2;
+      for (let i=0;i<n;i++) {
+        if (isHover(p,startX+i*(bw+6),144,bw,42)) { gs.awardedTo=i; return; }
+      }
+      // Skip
+      if (isHover(p,W/2-60,196,120,26)) { skipAward(); return; }
+      // Confirm
+      if (gs.awardedTo>=0 && isHover(p,W/2-80,232,160,30)) {
+        awardPoints(gs.awardedTo, getAwardPoints());
+        return;
+      }
+    } else {
+      if (isHover(p,W/2-80,232,160,30)) { nextTurn(); return; }
+    }
+    return;
+  }
+
+  if (screen==='wild') {
+    const ev=gs.wildEvent;
+    if (!ev) return;
+    // Skip
+    if (isHover(p,W-110,H-52,100,28)) { nextTurn(); return; }
+    if ((ev.type==='swap'||ev.type==='steal')) {
+      const n=gs.numPlayers;
+      const bw=90;
+      const totalW=n*bw+(n-1)*8;
+      const sx=(W-totalW)/2;
+      for (let i=0;i<n;i++) {
+        if (i===gs.currentPlayer) continue;
+        const bx=sx+i*(bw+8),by=H/2+78;
+        if (isHover(p,bx,by,bw,32)) {
+          if (ev.type==='swap') wildSwapWith(i);
+          else wildStealFrom(i);
+          return;
+        }
+      }
+    } else {
+      if (isHover(p,W/2-60,H/2+112,120,28)) { nextTurn(); return; }
+    }
+    return;
+  }
+
+  if (screen==='winner') {
+    if (isHover(p,W/2-100,H-80,90,32)) { startNewGame(); return; }
+    if (isHover(p,W/2+10,H-80,90,32)) { exportResults(); return; }
+    if (isHover(p,W/2-40,H-40,80,24)) { copyTextSummary(); return; }
+    return;
+  }
+}
+
+function handleKeyPress(p, key, keyCode) {
+  if (gs.screen==='roll') {
+    if (key===' ' || keyCode===13) {
+      if (!gs.diceRolled && !gs.animating) doRoll(p);
+      else if (gs.diceRolled && !gs.animating) afterMove();
+    }
+    if (key==='b'||key==='B') { gs.screen='board'; return; }
+  }
+  if (gs.screen==='challenge') {
+    const levelKeys = { '1':'starter', '2':'beginner', '3':'intermediate', '4':'advanced' };
+    if (levelKeys[key]) { selectChallengeLevel(levelKeys[key]); return; }
+    if (keyCode===13 && gs.challengeStarted) goToScore();
+    if (key===' ' && !gs.challengeStarted) startTimer();
+  }
+  if (gs.screen==='score') {
+    const lvlDef=LEVELS.find(l=>l.id===(gs.selectedLvl||'beginner'))||LEVELS[1];
+    if (!gs.awardConfirmed) {
+      const n=gs.numPlayers;
+      for (let i=0;i<n;i++) {
+        if (key===String(i+1)) { gs.awardedTo=i; return; }
+      }
+      if (key==='0') { skipAward(); return; }
+      if (keyCode===13 && gs.awardedTo>=0) awardPoints(gs.awardedTo,getAwardPoints());
+    } else {
+      if (keyCode===13) nextTurn();
+    }
+  }
+  if (gs.screen==='winner') {
+    if (key==='r'||key==='R') startNewGame();
+    if (key==='e'||key==='E') exportResults();
+  }
+  if (key==='f'||key==='F') {
+    facVisible=!facVisible;
+    document.getElementById('facilitator-panel').classList.toggle('visible',facVisible);
+    document.getElementById('fac-toggle').textContent=facVisible?'🔓':'🔒';
+  }
+}
+
+// ── MAIN LOOP (p5.js) ─────────────────────────────────────────────────────────
+new p5(function(p) {
+  window._p5 = p;
+
+  p.setup = function() {
+    const canvas = p.createCanvas(W, H);
+    canvas.parent(document.body);
+    canvas.elt.setAttribute('role', 'application');
+    canvas.elt.setAttribute('aria-label', 'AXIOM-7 educational board game. Use the on-screen controls or the keyboard hints.');
+    canvas.elt.tabIndex = 0;
+    p.textFont("system-ui");
+    gs = defaultState();
+    initStarfield(p);
+    gs.savedExists = !!loadSave();
+    gs.selectedLvl = 'beginner';
+  };
+
+  p.draw = function() {
+    tickAnim();
+    tickTimer();
+    tickSpeech();
+    tickScoreAnims();
+    tickConfetti();
+
+    const s = gs.screen;
+    if (s==='splash')    drawSplash(p);
+    else if (s==='setup')     drawSetup(p);
+    else if (s==='roll')      drawRoll(p);
+    else if (s==='board')     drawBoard(p);
+    else if (s==='challenge') drawChallenge(p);
+    else if (s==='score')     drawScore(p);
+    else if (s==='wild')      drawWild(p);
+    else if (s==='winner')    drawWinner(p);
+  };
+
+  p.mousePressed = function() { handleClick(p); };
+  p.keyPressed  = function() { handleKeyPress(p, p.key, p.keyCode); };
+});
+</script>
+</body>
+</html>
