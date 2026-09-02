@@ -1,0 +1,35 @@
+name: Study C Research Mode QA
+on:
+  pull_request:
+    paths:
+      - 'studyc.html'
+      - 'studyc-print.html'
+      - 'css/studyc.css'
+      - 'js/studyc-core.js'
+      - 'js/studyc-app.js'
+      - 'tests/studyc-core.test.js'
+      - 'README-STUDYC.md'
+      - '.github/workflows/studyc.yml'
+  workflow_dispatch:
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic core tests
+        run: node tests/studyc-core.test.js
+      - name: Check Study C mode has no remote runtime dependencies
+        run: |
+          if grep -REn "https?://" studyc.html studyc-print.html css/studyc.css js/studyc-core.js js/studyc-app.js; then
+            echo "Remote URL found in Study C runtime files"
+            exit 1
+          fi
+      - name: Check forbidden outcome inference labels are absent from event types
+        run: |
+          if grep -Ein "logEvent\([^,]*['\"](CONFIDENT|ENGAGED|EMPOWERED|LEARNED|EQUITABLE|PERSISTENT)" js/studyc-app.js; then
+            echo "Forbidden inferred outcome event found"
+            exit 1
+          fi
