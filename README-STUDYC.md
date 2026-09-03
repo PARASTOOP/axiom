@@ -2,7 +2,9 @@
 
 ## Coastal Signal Studio
 
-This branch implements the controlled R12 Study C build-ready specification as a separate AXIOM-7 research mode. It does **not** replace the historical board/game implementation on `main`.
+This branch is a bounded Study C implementation asset. Its current scientific basis is the evidence-derived downstream chain recorded in `Downstream_LearningPurpose_Enactment_Modality_AI_Decisions_CURRENT_v1` and `StudyC_Testing_and_CoDesign_Alignment_CURRENT_v2` in the controlled research Drive. Earlier R8–R12 documents are historical/audit sources and no longer determine the scientific design basis.
+
+The branch does **not** replace the historical board/game implementation on `main`.
 
 ## What participants do
 A zero-background child–adult pair:
@@ -14,12 +16,12 @@ A zero-background child–adult pair:
 6. retests and compares before/after behaviour;
 7. reflects on what the model used and what people still decided.
 
-The classifier is one bounded implementation choice. It is **not** a theoretically required part of the PhD contribution.
+The classifier is one bounded implementation choice for formative investigation. It is **not** a theoretically required part of the PhD contribution and must not be presented as how all AI works.
 
 ## Run
 Open `studyc.html` directly in a modern browser. Study C mode has no required network or CDN dependency.
 
-Optional shared printable cards: `studyc-print.html`.
+Optional shared printable cards: `studyc-print.html`. When used, the physical layer should support shared externalisation/manipulation/contribution rather than being justified merely as a duplicate of the digital layer.
 
 ## Core QA
 With Node installed:
@@ -38,6 +40,7 @@ A pull-request workflow also runs deterministic core tests and checks that Study
 - No compulsory role rotation or reciprocity is used.
 - AI output and human judgement remain separate.
 - The coastal/lighthouse story is an orientation shell, not the research mechanism.
+- Gender-equity review concerns technical/explanatory opportunity, legitimacy and recognition; equal turns are not treated as evidence of equity.
 
 ## Main files
 - `studyc.html` — participant-facing research mode
