@@ -23,14 +23,39 @@ Open `studyc.html` directly in a modern browser. Study C mode has no required ne
 
 Optional shared printable cards: `studyc-print.html`. When used, the physical layer should support shared externalisation/manipulation/contribution rather than being justified merely as a duplicate of the digital layer.
 
+## Internal enactment status — 4 September 2026
+
+A controlled pre-participant internal enactment audit has been completed against the current Study C design chain. The audit did not identify a reason to reopen the Framework, integrated design reasoning, learning purpose, modality decision or core mechanism architecture. Confirmed problems were implementation/enactment-translation defects and were corrected on this branch.
+
+Corrected implementation defects:
+- entry and reflection no longer teach the intended human–AI conclusion before it can be observed;
+- progressive disclosure now shows the current and next action rather than the full nine-step procedure;
+- contribution opportunities are contextual, optional and re-enterable rather than fixed front-loaded roles;
+- before/after comparison exposes relevant dataset, label, mapping, test-signal, prediction and human-check changes;
+- second-attempt inspection/human-check returns to comparison rather than forcing another revision loop;
+- dark-mode primary-action contrast was strengthened;
+- quote escaping regression was corrected;
+- CI now syntax-checks both Study C JavaScript files in addition to deterministic core tests.
+
+Still open for real human/browser enactment rather than code-level inference:
+- whether contribution prompts feel natural or burdensome to a child–adult pair;
+- whether control is actually transferred/reclaimed rather than dominated or bypassed;
+- whether progressive disclosure is sufficient for zero/uneven expertise without substantive researcher scaffolding;
+- whether the physical printable layer adds useful shared externalisation/manipulation or merely duplicates digital entry;
+- real-device/browser, keyboard, large-text and reduced-motion usability.
+
+An attempted Chromium execution inside the current controlled assistant environment was blocked by that environment's organisation-level URL policy before the prototype loaded. This is recorded as an environment limitation, not as evidence of a prototype defect or browser readiness. Real-browser usability therefore remains unverified until the revised build is executed in an intended browser/device environment.
+
 ## Core QA
 With Node installed:
 
 ```bash
 node tests/studyc-core.test.js
+node --check js/studyc-core.js
+node --check js/studyc-app.js
 ```
 
-A pull-request workflow also runs deterministic core tests and checks that Study C runtime files contain no remote URLs.
+The pull-request workflow runs deterministic core tests, syntax-checks the Study C JavaScript, checks that Study C runtime files contain no remote URLs, and rejects forbidden inferred outcome event labels.
 
 ## Research boundaries
 - Study C is formative testing/co-design, not outcome evaluation.
