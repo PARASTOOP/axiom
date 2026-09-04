@@ -21,6 +21,10 @@ jobs:
           node-version: '22'
       - name: Run deterministic core tests
         run: node tests/studyc-core.test.js
+      - name: Syntax-check Study C JavaScript
+        run: |
+          node --check js/studyc-core.js
+          node --check js/studyc-app.js
       - name: Check Study C mode has no remote runtime dependencies
         run: |
           if grep -REn "https?://" studyc.html studyc-print.html css/studyc.css js/studyc-core.js js/studyc-app.js; then
