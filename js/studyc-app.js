@@ -15,7 +15,7 @@
 
   function esc(v){
     return String(v ?? '').replace(/[&<>"']/g, c => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'
     })[c]);
   }
 
@@ -311,7 +311,13 @@
     $('#toCheck')?.addEventListener('click',()=>go('S5_CHECK'));
     $('#toCompare')?.addEventListener('click',()=>force('S7_RETEST'));
     $('#reviseEarly')?.addEventListener('click',()=>go('S6_REVISE'));
-    $$('.check').forEach(b=>b.onclick=()=>{C.setHumanCheck(s,b.dataset.v);emit('HUMAN_CHECK',{value:b.dataset.v});b.dataset.v==='CHECK_AGAIN'?force('S4_INSPECT'):go('S6_REVISE');});
+    $$('.check').forEach(b=>b.onclick=()=>{
+      C.setHumanCheck(s,b.dataset.v);
+      emit('HUMAN_CHECK',{value:b.dataset.v});
+      if (b.dataset.v==='CHECK_AGAIN') force('S4_INSPECT');
+      else if (s.attempts.length>1) force('S7_RETEST');
+      else go('S6_REVISE');
+    });
 
     $('#editExamples')?.addEventListener('click',()=>force('S2_CREATE'));
     $('#editTest')?.addEventListener('click',()=>force('S3_PREDICT'));
